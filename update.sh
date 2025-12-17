@@ -22,6 +22,19 @@ npm run build
 echo "🚀 Restarting Server..."
 pm2 restart life-k-line
 
+# 5. Show Info
+ADMIN_PATH=$(grep ADMIN_PATH .env | cut -d '=' -f2 | tr -d '\r')
+ADMIN_USER=$(grep ADMIN_USER .env | cut -d '=' -f2 | tr -d '\r')
+CURRENT_PASS=$(grep ADMIN_PASS .env | cut -d '=' -f2 | tr -d '\r')
+
 echo "
 ✅ Update Complete!
+
+==================================================
+🌍 Main App:    http://localhost:3000
+🔧 Admin Panel: http://localhost:3000$ADMIN_PATH
+==================================================
+👤 Admin User:  $ADMIN_USER
+🔑 Admin Pass:  $CURRENT_PASS
+==================================================
 "
