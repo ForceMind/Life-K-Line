@@ -231,11 +231,30 @@ app.get('/api/admin/cards', adminAuth, async (req, res) => {
       console.error('Database instance is null');
       return res.status(500).json({ error: 'Database not initialized' });
     }
-    const cards = await db.all('SELECT * FROM cards ORDER BY created_at DESC');
+    // Join with reports to get distinct bazi count
+    const cards = await db.all(`
+      SELECT c.*, COUNT(DISTINCT r.bazi_signature) as bazi_count 
+      FROM cards c 
+      LEFT JOIN reports r ON c.code = r.card_code 
+      GROUP BY c.id 
+      ORDER BY c.created_at DESC
+    `);
     res.json({ cards });
   } catch (error) {
     console.error('Error fetching cards:', error);
     res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Void Card
+app.post('/api/admin/cards/:code/void', adminAuth, async (req, res) => {
+  const { code } = req.params;
+  const db = getDb();
+  try {
+    await db.run("UPDATE cards SET status = 'used' WHERE code = ?", code);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to void card' });
   }
 });
 

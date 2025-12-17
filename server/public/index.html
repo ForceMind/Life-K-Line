@@ -102,10 +102,19 @@
                 <!-- List -->
                 <div>
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="font-bold text-gray-700">卡密列表 ({{ cards.length }})</h2>
-                        <div class="flex gap-2">
-                            <button @click="exportCSV" class="text-green-600 text-sm hover:underline">导出CSV</button>
-                            <button @click="fetchCards" class="text-blue-600 text-sm hover:underline">刷新列表</button>
+                        <h2 class="font-bold text-gray-700">卡密列表 ({{ filteredCards.length }})</h2>
+                        <div class="flex gap-4 items-center">
+                            <input v-model="searchQuery" type="text" placeholder="搜索卡密..." class="border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none focus:border-blue-500">
+                            <select v-model="filterStatus" class="border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none focus:border-blue-500">
+                                <option value="all">全部状态</option>
+                                <option value="unused">未使用</option>
+                                <option value="active">使用中</option>
+                                <option value="used">已失效</option>
+                            </select>
+                            <div class="flex gap-2">
+                                <button @click="exportCSV" class="text-green-600 text-sm hover:underline">导出CSV</button>
+                                <button @click="fetchCards" class="text-blue-600 text-sm hover:underline">刷新列表</button>
+                            </div>
                         </div>
                     </div>
                     
@@ -113,17 +122,17 @@
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-gray-50 text-gray-600 text-sm">
-                                    <th class="p-3 border-b">ID</th>
-                                    <th class="p-3 border-b">卡密</th>
-                                    <th class="p-3 border-b">状态</th>
-                                    <th class="p-3 border-b">使用次数</th>
-                                    <th class="p-3 border-b">创建时间</th>
-                                    <th class="p-3 border-b">激活时间</th>
+                                    <th @click="sortBy('id')" class="p-3 border-b cursor-pointer hover:bg-gray-100">ID <span v-if="sortKey === 'id'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span></th>
+                                    <th @click="sortBy('code')" class="p-3 border-b cursor-pointer hover:bg-gray-100">卡密 <span v-if="sortKey === 'code'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span></th>
+                                    <th @click="sortBy('status')" class="p-3 border-b cursor-pointer hover:bg-gray-100">状态 <span v-if="sortKey === 'status'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span></th>
+                                    <th @click="sortBy('bazi_count')" class="p-3 border-b cursor-pointer hover:bg-gray-100">八字消耗/API调用 <span v-if="sortKey === 'bazi_count'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span></th>
+                                    <th @click="sortBy('created_at')" class="p-3 border-b cursor-pointer hover:bg-gray-100">创建时间 <span v-if="sortKey === 'created_at'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span></th>
+                                    <th @click="sortBy('activated_at')" class="p-3 border-b cursor-pointer hover:bg-gray-100">激活时间 <span v-if="sortKey === 'activated_at'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span></th>
                                     <th class="p-3 border-b">操作</th>
                                 </tr>
                             </thead>
                             <tbody class="text-sm">
-                                <tr v-for="card in cards" :key="card.id" class="hover:bg-gray-50 border-b last:border-0">
+                                <tr v-for="card in filteredCards" :key="card.id" class="hover:bg-gray-50 border-b last:border-0">
                                     <td class="p-3 text-gray-500">{{ card.id }}</td>
                                     <td class="p-3 font-mono font-bold text-gray-800">{{ card.code }}</td>
                                     <td class="p-3">
@@ -135,11 +144,15 @@
                                             {{ statusMap[card.status] || card.status }}
                                         </span>
                                     </td>
-                                    <td class="p-3 text-gray-800">{{ card.use_count || 0 }}</td>
+                                    <td class="p-3 text-gray-800">
+                                        <span class="font-bold" :class="{'text-red-600': card.bazi_count >= 3}">{{ card.bazi_count || 0 }}/3</span>
+                                        <span class="text-gray-400 text-xs ml-1">({{ card.use_count || 0 }}次)</span>
+                                    </td>
                                     <td class="p-3 text-gray-500">{{ formatDate(card.created_at) }}</td>
                                     <td class="p-3 text-gray-500">{{ formatDate(card.activated_at) }}</td>
-                                    <td class="p-3">
-                                        <button @click="viewLogs(card)" class="text-blue-600 hover:underline text-xs">查看日志</button>
+                                    <td class="p-3 flex gap-2">
+                                        <button @click="viewLogs(card)" class="text-blue-600 hover:underline text-xs">日志</button>
+                                        <button v-if="card.status !== 'used'" @click="voidCard(card)" class="text-red-600 hover:underline text-xs">作废</button>
                                     </td>
                                 </tr>
                             </tbody>
@@ -206,7 +219,7 @@
     </div>
 
     <script>
-        const { createApp, ref, onMounted } = Vue;
+        const { createApp, ref, onMounted, computed } = Vue;
 
         createApp({
             setup() {
@@ -224,11 +237,55 @@
                 const currentLogs = ref([]);
                 const currentLogDetail = ref(null);
                 const configForm = ref({});
+                
+                // Sorting & Filtering
+                const searchQuery = ref('');
+                const filterStatus = ref('all');
+                const sortKey = ref('created_at');
+                const sortOrder = ref('desc');
 
                 const statusMap = {
                     'unused': '未使用',
                     'active': '使用中',
                     'used': '已失效'
+                };
+
+                const filteredCards = computed(() => {
+                    let result = cards.value;
+
+                    // Filter
+                    if (searchQuery.value) {
+                        const q = searchQuery.value.toLowerCase();
+                        result = result.filter(c => c.code.toLowerCase().includes(q));
+                    }
+                    if (filterStatus.value !== 'all') {
+                        result = result.filter(c => c.status === filterStatus.value);
+                    }
+
+                    // Sort
+                    result.sort((a, b) => {
+                        let valA = a[sortKey.value];
+                        let valB = b[sortKey.value];
+                        
+                        // Handle nulls
+                        if (valA === null || valA === undefined) valA = '';
+                        if (valB === null || valB === undefined) valB = '';
+
+                        if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1;
+                        if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1;
+                        return 0;
+                    });
+
+                    return result;
+                });
+
+                const sortBy = (key) => {
+                    if (sortKey.value === key) {
+                        sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        sortKey.value = key;
+                        sortOrder.value = 'desc'; // Default desc for new sort
+                    }
                 };
 
                 const formatDate = (dateStr) => {
@@ -386,6 +443,25 @@
                         alert('获取日志失败');
                     }
                 };
+
+                const voidCard = async (card) => {
+                    if (!confirm(`确定要作废卡密 ${card.code} 吗？此操作不可撤销。`)) return;
+                    try {
+                        const res = await fetch(`/api/admin/cards/${card.code}/void`, {
+                            method: 'POST',
+                            headers: getHeaders()
+                        });
+                        if (res.ok) {
+                            alert('卡密已作废');
+                            fetchCards();
+                        } else {
+                            alert('操作失败');
+                        }
+                    } catch (e) {
+                        alert('操作错误');
+                    }
+                };
+
                 const copyNewCards = async () => {
                     try {
                         await navigator.clipboard.writeText(newCards.value.join('\n'));
@@ -412,11 +488,12 @@
                 };
 
                 const exportCSV = () => {
-                    const headers = ['ID', '卡密', '状态', '使用次数', '创建时间', '激活时间'];
+                    const headers = ['ID', '卡密', '状态', '已用八字数', 'API调用次数', '创建时间', '激活时间'];
                     const rows = cards.value.map(c => [
                         c.id,
                         c.code,
                         statusMap[c.status] || c.status,
+                        c.bazi_count || 0,
                         c.use_count || 0,
                         formatDate(c.created_at),
                         formatDate(c.activated_at)
@@ -461,16 +538,15 @@
                     exportCSV,
                     formatDate,
                     saveConfig,
-                    formatJson
-                };
-            }
-        }).mount('#app');
-    </script>
-</body>
-</html>
-                    formatDate,
-                    saveConfig,
-                    formatJson
+                    formatJson,
+                    // New
+                    searchQuery,
+                    filterStatus,
+                    sortKey,
+                    sortOrder,
+                    filteredCards,
+                    sortBy,
+                    voidCard
                 };
             }
         }).mount('#app');
