@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #app {
+  height: 100%;
+  width: 100%;
+  /* overflow: hidden; Removed to allow scrolling in long reports */
+  background-color: #f9fafb;
+  color: #111827;
+}
