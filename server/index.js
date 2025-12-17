@@ -58,7 +58,7 @@ const updateEnvFile = (newConfig) => {
 
 // Admin Auth Middleware
 const adminAuth = (req, res, next) => {
-  const { username, password } = req.body;
+  const { username, password } = req.body || {};
   // Check body (for login) or headers (for API calls)
   const authHeader = req.headers.authorization;
   
@@ -338,6 +338,12 @@ app.get(/(.*)/, (req, res) => {
     return res.status(404).json({ error: 'Not Found' });
   }
   res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error('Global Error:', err);
+  res.status(500).json({ error: 'Internal Server Error', details: err.message });
 });
 
 // Initialize DB and Start Server

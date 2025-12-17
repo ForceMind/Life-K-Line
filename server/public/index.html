@@ -284,18 +284,17 @@
                 const fetchConfig = async () => {
                     try {
                         const res = await fetch('/api/admin/config', { headers: getHeaders() });
-                        if (res.ok) {
-                            const data = await res.json();
-                            configForm.value = {
-                                PORT: data.PORT,
-                                ADMIN_USER: data.ADMIN_USER,
-                                ADMIN_PATH: data.ADMIN_PATH,
-                                ADMIN_PASS: '', // Don't show password
-                                DEEPSEEK_API_KEY: '', // Don't show full key
-                                DEEPSEEK_BASE_URL: data.DEEPSEEK_BASE_URL,
-                                DEEPSEEK_MODEL: data.DEEPSEEK_MODEL
-                            };
-                        }
+                        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                        const data = await res.json();
+                        configForm.value = {
+                            PORT: data.PORT,
+                            ADMIN_USER: data.ADMIN_USER,
+                            ADMIN_PATH: data.ADMIN_PATH,
+                            ADMIN_PASS: '', // Don't show password
+                            DEEPSEEK_API_KEY: '', // Don't show full key
+                            DEEPSEEK_BASE_URL: data.DEEPSEEK_BASE_URL,
+                            DEEPSEEK_MODEL: data.DEEPSEEK_MODEL
+                        };
                     } catch (e) {
                         console.error('Fetch config failed', e);
                     }
@@ -347,6 +346,7 @@
                             logout();
                             return;
                         }
+                        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                         const data = await res.json();
                         cards.value = data.cards;
                         isLoggedIn.value = true;
