@@ -344,7 +344,7 @@
                         alert('获取日志失败');
                     }
                 };
-async () => {
+                const copyNewCards = async () => {
                     try {
                         await navigator.clipboard.writeText(newCards.value.join('\n'));
                         alert('已复制到剪贴板');
@@ -361,8 +361,7 @@ async () => {
                             alert('复制失败，请手动复制');
                         }
                         document.body.removeChild(textArea);
-                    }rd.writeText(newCards.value.join('\n'));
-                    alert('已复制到剪贴板');
+                    }
                 };
 
                 const exportCSV = () => {
