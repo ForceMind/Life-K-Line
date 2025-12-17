@@ -400,22 +400,28 @@
                             document.execCommand('copy');
                             alert('已复制到剪贴板');
                         } catch (err) {
-                    showDetailModal,
-                    currentCard,
-                    currentLogs,
-                    currentLogDetail,
-                    configForm,
-                    login,
-                    logout,
-                    fetchCards,
-                    generateCards,
-                    viewLogs,
-                    showLogDetail,
-                    copyNewCards,
-                    exportCSV,
-                    formatDate,
-                    formatJson
-                    const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
+                            alert('复制失败，请手动复制');
+                        }
+                        document.body.removeChild(textArea);
+                    }
+                };
+
+                const showLogDetail = (log) => {
+                    currentLogDetail.value = log;
+                    showDetailModal.value = true;
+                };
+
+                const exportCSV = () => {
+                    const headers = ['ID', '卡密', '状态', '使用次数', '创建时间', '激活时间'];
+                    const rows = cards.value.map(c => [
+                        c.id,
+                        c.code,
+                        statusMap[c.status] || c.status,
+                        c.use_count || 0,
+                        formatDate(c.created_at),
+                        formatDate(c.activated_at)
+                    ]);
+                    const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(',')).join('\n');
                     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                     const link = document.createElement('a');
                     link.href = URL.createObjectURL(blob);
@@ -440,18 +446,22 @@
                     statusMap,
                     showLogsModal,
                     showSettings,
+                    showDetailModal,
                     currentCard,
                     currentLogs,
+                    currentLogDetail,
                     configForm,
                     login,
                     logout,
                     fetchCards,
                     generateCards,
                     viewLogs,
+                    showLogDetail,
                     copyNewCards,
                     exportCSV,
                     formatDate,
-                    saveConfig
+                    saveConfig,
+                    formatJson
                 };
             }
         }).mount('#app');

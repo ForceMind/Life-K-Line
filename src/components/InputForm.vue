@@ -98,18 +98,6 @@ const handleStart = () => {
           </div>
         </div>
 
-        <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
-          <h3 class="font-bold text-blue-800 mb-2 flex items-center gap-2">
-            <span>ℹ️</span> 使用说明
-          </h3>
-          <ul class="text-sm text-blue-700 space-y-1 list-disc list-inside">
-            <li>请输入您的出生信息，系统将自动排盘。</li>
-            <li>需要输入卡密才能生成报告。</li>
-            <li><strong>一个卡密支持查询 3 个不同的八字。</strong></li>
-            <li><strong>卡密激活后 24 小时内有效，期间可反复查看已查询的报告。</strong></li>
-          </ul>
-        </div>
-
         <div class="space-y-6">
           <!-- 基础信息 -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -208,16 +196,15 @@ const handleStart = () => {
             <label class="block text-xs text-gray-500 mb-1">请输入您的卡密 (Card Key)</label>
             <input v-model="apiConfig.cardKey" type="text" class="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none font-mono" placeholder="LK-XXXX-XXXX">
           </div>
-          <!-- Hidden Advanced Settings -->
-          <details class="text-xs text-gray-400">
-            <summary class="cursor-pointer hover:text-gray-600">高级设置 (可选)</summary>
-            <div class="mt-2 space-y-2 pl-2 border-l-2 border-gray-100">
-               <div>
-                <label class="block text-xs text-gray-500 mb-1">Model Name</label>
-                <input v-model="apiConfig.model" type="text" class="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none" placeholder="deepseek-chat">
-              </div>
-            </div>
-          </details>
+          
+          <div class="bg-blue-50 p-3 rounded border border-blue-100">
+            <h4 class="font-bold text-blue-800 text-xs mb-1">使用说明</h4>
+            <ul class="text-xs text-blue-700 space-y-1 list-disc list-inside">
+              <li>一个卡密支持查询 <strong>3 个不同的八字</strong>。</li>
+              <li>卡密激活后 <strong>24 小时内有效</strong>。</li>
+              <li>有效期内可反复查看已查询的报告。</li>
+            </ul>
+          </div>
         </div>
         <div class="mt-6 flex justify-end gap-3">
           <button @click="showSettings = false" class="px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors">取消</button>
