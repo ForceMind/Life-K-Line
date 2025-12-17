@@ -288,7 +288,13 @@ app.post('/api/verify-card', async (req, res) => {
 
 // Generate Report (Proxy to AI)
 app.post('/api/generate-report', verifyCard, async (req, res) => {
-  const { messages, model } = req.body;
+  // Check for cache hit from middleware
+  if (req.cachedReport) {
+    console.log('Serving from cache');
+    return res.json(req.cachedReport);
+  }
+
+  const { messages, model, baziSignature } = req.body;
   const db = getDb();
   const card = req.card;
   const ip = req.ip || req.connection.remoteAddress;
@@ -329,15 +335,23 @@ app.post('/api/generate-report', verifyCard, async (req, res) => {
       }
     );
 
+    const responseData = response.data;
+
     // Update log with output data
-    // We need the last inserted ID. Since we can't easily get it in async flow without result from INSERT,
-    // we'll just update the latest log for this card.
     await db.run(
       'UPDATE card_logs SET output_data = ? WHERE id = (SELECT id FROM card_logs WHERE card_code = ? ORDER BY id DESC LIMIT 1)',
-      [JSON.stringify(response.data), card.code]
+      [JSON.stringify(responseData), card.code]
     );
 
-    res.json(response.data);
+    // Save to Cache (Reports table) if signature is present
+    if (baziSignature) {
+      await db.run(
+        'INSERT INTO reports (card_code, bazi_signature, report_data) VALUES (?, ?, ?)',
+        [card.code, baziSignature, JSON.stringify(responseData)]
+      );
+    }
+
+    res.json(responseData);
   } catch (error) {
     console.error('AI API Error:', error.response?.data || error.message);
     res.status(500).json({ error: 'AI Service Error' });
