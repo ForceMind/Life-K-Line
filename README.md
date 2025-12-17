@@ -77,11 +77,37 @@ Life K-Line 是一个基于 AI 的趣味性命理分析工具，它将中国传�
 #### Windows 一键启动
 双击运行根目录下的 `start.bat` 脚本。
 
-### 4. 访问与配置
+### 4. 域名访问与反向代理 (推荐)
+
+如果您无法通过 `http://IP:3000` 访问，可能是因为服务器防火墙未开放 3000 端口。
+推荐使用 Nginx 反向代理，通过 80 端口（标准 HTTP）访问。
+
+运行以下脚本一键配置 Nginx：
+```bash
+chmod +x setup_nginx.sh
+sudo ./setup_nginx.sh
+```
+脚本会引导您输入域名或公网 IP，并自动配置反向代理。
+
+### 5. 项目更新
+
+当项目有新版本时，无需手动操作，运行更新脚本即可：
+```bash
+chmod +x update.sh
+./update.sh
+```
+该脚本会：
+1. 拉取最新代码。
+2. 更新依赖。
+3. 重新构建前端。
+4. 重启服务。
+**注意**：更新过程不会删除您的数据库 (`database.sqlite`) 和配置文件 (`.env`)。
+
+### 6. 访问与配置
 
 启动成功后：
 
-- **用户端**: [http://localhost:3000](http://localhost:3000)
+- **用户端**: [http://localhost:3000](http://localhost:3000) (或您的域名)
 - **管理后台**: [http://localhost:3000/admin](http://localhost:3000/admin) (默认路径)
 
 **首次登录后：**

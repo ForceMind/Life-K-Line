@@ -1,2 +1,7 @@
 lifekline-main/
 node_modules/
+dist/
+.env
+server/database.sqlite
+*.log
+.DS_Store
