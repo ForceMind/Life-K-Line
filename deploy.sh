@@ -85,3 +85,79 @@ echo "
 2. Click 'System Settings' (系统设置).
 3. Enter your DeepSeek API Key.
 "
+
+# --- Nginx Setup Section ---
+echo ""
+read -p "🌐 Do you want to set up Nginx Reverse Proxy (Domain Access)? [y/N] " -n 1 -r
+echo ""
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "🚀 Setting up Nginx..."
+    
+    # Install Nginx if missing
+    if ! command -v nginx &> /dev/null; then
+        echo "📦 Installing Nginx..."
+        if [ -x "$(command -v apt-get)" ]; then
+            sudo apt-get update
+            sudo apt-get install -y nginx
+        elif [ -x "$(command -v yum)" ]; then
+            sudo yum install -y nginx
+        else
+            echo "❌ Unsupported package manager. Please install Nginx manually."
+        fi
+    fi
+
+    # Ask for Domain
+    echo "------------------------------------------------"
+    echo "Please enter the Domain Name or Public IP for this server."
+    echo "Examples: example.com OR 47.100.x.x"
+    echo "------------------------------------------------"
+    read -p "Domain/IP: " DOMAIN
+
+    if [ ! -z "$DOMAIN" ]; then
+        CONFIG_FILE="/etc/nginx/sites-available/life-k-line"
+        # Ensure directory exists
+        if [ ! -d "/etc/nginx/sites-available" ]; then
+            sudo mkdir -p /etc/nginx/sites-available
+            sudo mkdir -p /etc/nginx/sites-enabled
+        fi
+
+        echo "📝 Writing configuration to $CONFIG_FILE..."
+        
+        # Use sudo tee for writing to protected directories
+        sudo tee $CONFIG_FILE > /dev/null <<EOF
+server {
+    listen 80;
+    server_name $DOMAIN;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    }
+}
+EOF
+
+        # Enable Site
+        echo "🔗 Enabling site..."
+        sudo ln -sf $CONFIG_FILE /etc/nginx/sites-enabled/
+        
+        # Remove default if exists
+        if [ -f "/etc/nginx/sites-enabled/default" ]; then
+            sudo rm -f /etc/nginx/sites-enabled/default
+        fi
+
+        # Test and Restart
+        echo "🔄 Restarting Nginx..."
+        sudo nginx -t && sudo systemctl restart nginx
+        
+        echo "✅ Nginx Setup Complete! Access at: http://$DOMAIN"
+    else
+        echo "❌ Domain skipped."
+    fi
+fi
+
