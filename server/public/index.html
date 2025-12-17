@@ -60,6 +60,10 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">DeepSeek Base URL</label>
                                 <input v-model="configForm.DEEPSEEK_BASE_URL" type="text" class="w-full border rounded px-3 py-2">
                             </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">模型名称 (Model Name)</label>
+                                <input v-model="configForm.DEEPSEEK_MODEL" type="text" placeholder="deepseek-chat" class="w-full border rounded px-3 py-2">
+                            </div>
                         </div>
                         <div class="mt-6 flex justify-end gap-3">
                             <button @click="showSettings = false" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">取消</button>
@@ -246,7 +250,8 @@
                                 ADMIN_USER: data.ADMIN_USER,
                                 ADMIN_PASS: '', // Don't show password
                                 DEEPSEEK_API_KEY: '', // Don't show full key
-                                DEEPSEEK_BASE_URL: data.DEEPSEEK_BASE_URL
+                                DEEPSEEK_BASE_URL: data.DEEPSEEK_BASE_URL,
+                                DEEPSEEK_MODEL: data.DEEPSEEK_MODEL
                             };
                         }
                     } catch (e) {
@@ -339,9 +344,24 @@
                         alert('获取日志失败');
                     }
                 };
-
-                const copyNewCards = () => {
-                    navigator.clipboard.writeText(newCards.value.join('\n'));
+async () => {
+                    try {
+                        await navigator.clipboard.writeText(newCards.value.join('\n'));
+                        alert('已复制到剪贴板');
+                    } catch (err) {
+                        // Fallback for non-secure contexts (http)
+                        const textArea = document.createElement("textarea");
+                        textArea.value = newCards.value.join('\n');
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        try {
+                            document.execCommand('copy');
+                            alert('已复制到剪贴板');
+                        } catch (err) {
+                            alert('复制失败，请手动复制');
+                        }
+                        document.body.removeChild(textArea);
+                    }rd.writeText(newCards.value.join('\n'));
                     alert('已复制到剪贴板');
                 };
 

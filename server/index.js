@@ -21,7 +21,8 @@ let config = {
   ADMIN_PASS: process.env.ADMIN_PASS || 'admin123',
   ADMIN_PATH: process.env.ADMIN_PATH || '/admin',
   DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY || '',
-  DEEPSEEK_BASE_URL: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1'
+  DEEPSEEK_BASE_URL: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1',
+  DEEPSEEK_MODEL: process.env.DEEPSEEK_MODEL || 'deepseek-chat'
 };
 
 app.use(cors());
@@ -129,13 +130,14 @@ app.get('/api/admin/config', adminAuth, (req, res) => {
     // Mask password
     ADMIN_PASS: '******', 
     DEEPSEEK_API_KEY: config.DEEPSEEK_API_KEY ? '******' + config.DEEPSEEK_API_KEY.slice(-4) : '',
-    DEEPSEEK_BASE_URL: config.DEEPSEEK_BASE_URL
+    DEEPSEEK_BASE_URL: config.DEEPSEEK_BASE_URL,
+    DEEPSEEK_MODEL: config.DEEPSEEK_MODEL
   });
 });
 
 // Update Config
 app.post('/api/admin/config', adminAuth, (req, res) => {
-  const { PORT, ADMIN_USER, ADMIN_PASS, DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL } = req.body;
+  const { PORT, ADMIN_USER, ADMIN_PASS, DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL } = req.body;
   const newConfig = {};
 
   if (PORT) newConfig.PORT = PORT;
@@ -143,6 +145,7 @@ app.post('/api/admin/config', adminAuth, (req, res) => {
   if (ADMIN_PASS) newConfig.ADMIN_PASS = ADMIN_PASS;
   if (DEEPSEEK_API_KEY) newConfig.DEEPSEEK_API_KEY = DEEPSEEK_API_KEY;
   if (DEEPSEEK_BASE_URL) newConfig.DEEPSEEK_BASE_URL = DEEPSEEK_BASE_URL;
+  if (DEEPSEEK_MODEL) newConfig.DEEPSEEK_MODEL = DEEPSEEK_MODEL;
 
   try {
     updateEnvFile(newConfig);
@@ -251,7 +254,7 @@ app.post('/api/generate-report', verifyCard, async (req, res) => {
 
   try {
     const response = await axios.post(
-      `${config.DEEPSEEK_BASE_URL}/chat/completions`,
+      `${configconfig.DEEPSEEK_MODELSEEK_BASE_URL}/chat/completions`,
       {
         model: model || 'deepseek-chat',
         messages,
