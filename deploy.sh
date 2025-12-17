@@ -42,6 +42,8 @@ fi
 # 1. Install Dependencies
 echo "📦 Installing dependencies..."
 npm install
+# Fix permissions for executables
+chmod +x node_modules/.bin/*
 
 # 2. Build Frontend
 echo "🏗️  Building Frontend..."

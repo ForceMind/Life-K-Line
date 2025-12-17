@@ -40,6 +40,11 @@
                         <h2 class="text-xl font-bold mb-4">系统设置</h2>
                         <div class="space-y-4">
                             <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">服务端口 (PORT)</label>
+                                <input v-model="configForm.PORT" type="number" class="w-full border rounded px-3 py-2" placeholder="3000">
+                                <p class="text-xs text-red-500 mt-1">⚠️ 修改端口会导致服务重启，需要使用新端口重新访问。</p>
+                            </div>
+                            <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">管理员用户名</label>
                                 <input v-model="configForm.ADMIN_USER" type="text" class="w-full border rounded px-3 py-2">
                             </div>
@@ -237,6 +242,7 @@
                         if (res.ok) {
                             const data = await res.json();
                             configForm.value = {
+                                PORT: data.PORT,
                                 ADMIN_USER: data.ADMIN_USER,
                                 ADMIN_PASS: '', // Don't show password
                                 DEEPSEEK_API_KEY: '', // Don't show full key
@@ -263,6 +269,13 @@
                         
                         if (res.ok) {
                             const data = await res.json();
+                            
+                            if (data.restartRequired) {
+                                alert('配置已保存。服务正在重启以应用新端口，请稍后使用新端口访问。');
+                                showSettings.value = false;
+                                return;
+                            }
+
                             alert('配置已保存');
                             showSettings.value = false;
                             if (data.token) {

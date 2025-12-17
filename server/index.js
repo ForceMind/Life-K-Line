@@ -124,6 +124,7 @@ app.post('/api/admin/login', adminAuth, (req, res) => {
 // Get Config
 app.get('/api/admin/config', adminAuth, (req, res) => {
   res.json({
+    PORT: config.PORT,
     ADMIN_USER: config.ADMIN_USER,
     // Mask password
     ADMIN_PASS: '******', 
@@ -134,9 +135,10 @@ app.get('/api/admin/config', adminAuth, (req, res) => {
 
 // Update Config
 app.post('/api/admin/config', adminAuth, (req, res) => {
-  const { ADMIN_USER, ADMIN_PASS, DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL } = req.body;
+  const { PORT, ADMIN_USER, ADMIN_PASS, DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL } = req.body;
   const newConfig = {};
 
+  if (PORT) newConfig.PORT = PORT;
   if (ADMIN_USER) newConfig.ADMIN_USER = ADMIN_USER;
   if (ADMIN_PASS) newConfig.ADMIN_PASS = ADMIN_PASS;
   if (DEEPSEEK_API_KEY) newConfig.DEEPSEEK_API_KEY = DEEPSEEK_API_KEY;
@@ -151,7 +153,19 @@ app.post('/api/admin/config', adminAuth, (req, res) => {
       newToken = Buffer.from(`${config.ADMIN_USER}:${config.ADMIN_PASS}`).toString('base64');
     }
 
-    res.json({ success: true, token: newToken });
+    // Check if restart is needed (PORT changed)
+    const needsRestart = PORT && PORT !== config.PORT;
+
+    res.json({ success: true, token: newToken, restartRequired: needsRestart });
+
+    if (needsRestart) {
+      // Delay restart to allow response to be sent
+      setTimeout(() => {
+        console.log('Restarting server due to configuration change...');
+        process.exit(1); // PM2 will restart this
+      }, 1000);
+    }
+
   } catch (error) {
     console.error('Update config error:', error);
     res.status(500).json({ error: 'Failed to update configuration' });
