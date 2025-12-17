@@ -52,11 +52,21 @@ Life K-Line 是一个基于 AI 的趣味性命理分析工具，它将中国传�
 ### 3. 运行与部署
 
 #### Linux/Mac 一键自动化部署
-无需手动编辑任何文件，直接运行：
-```bash
-chmod +x deploy.sh
-./deploy.sh
-```
+无需手动编辑任何文件，请依次执行以下命令：
+
+1. **下载代码并进入目录**（如果已下载请跳过）：
+   ```bash
+   # 如果没有安装 git，请先运行: sudo apt update && sudo apt install git -y
+   git clone https://github.com/ForceMind/Life-K-Line.git
+   cd life-k-line
+   ```
+
+2. **运行部署脚本**：
+   ```bash
+   chmod +x deploy.sh
+   ./deploy.sh
+   ```
+
 脚本会自动：
 1. 检查并安装 Node.js (如果缺失)。
 2. 生成随机安全的管理员密码（首次运行）。

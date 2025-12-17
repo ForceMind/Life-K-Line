@@ -5,6 +5,17 @@ set -e
 
 echo "🚀 Starting Automated Deployment..."
 
+# 0. Ensure basic tools are installed
+if ! command -v curl &> /dev/null || ! command -v git &> /dev/null; then
+    echo "📦 Installing basic tools (curl, git)..."
+    if [ -x "$(command -v apt-get)" ]; then
+        sudo apt-get update
+        sudo apt-get install -y curl git
+    elif [ -x "$(command -v yum)" ]; then
+        sudo yum install -y curl git
+    fi
+fi
+
 # Check for Node.js
 if ! command -v node &> /dev/null; then
     echo "❌ Node.js is not installed. Installing Node.js 18..."
