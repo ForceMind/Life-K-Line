@@ -67,7 +67,8 @@ fi
 
 # Start/Restart with PM2
 pm2 delete life-k-line 2>/dev/null || true
-pm2 start server/index.js --name "life-k-line"
+# Ensure we run from the current directory to avoid path issues
+pm2 start server/index.js --name "life-k-line" --cwd "$(pwd)"
 pm2 save
 
 # Get Admin Path and User from .env
@@ -115,11 +116,16 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     fi
 
     # Ask for Domain
+    # Try to detect public IP
+    DETECTED_IP=$(curl -s ifconfig.me || curl -s icanhazip.com)
+
     echo "------------------------------------------------"
     echo "Please enter the Domain Name or Public IP for this server."
     echo "Examples: example.com OR 47.100.x.x"
+    echo "Detected IP: $DETECTED_IP"
     echo "------------------------------------------------"
-    read -p "Domain/IP: " DOMAIN
+    read -p "Domain/IP [$DETECTED_IP]: " DOMAIN
+    DOMAIN=${DOMAIN:-$DETECTED_IP}
 
     if [ ! -z "$DOMAIN" ]; then
         CONFIG_FILE="/etc/nginx/sites-available/life-k-line"
