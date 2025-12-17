@@ -1,9 +1,0 @@
-version: '3'
-services:
-  life-k-line:
-    build: .
-    image: life-k-line:latest
-    container_name: life-k-line-app
-    ports:
-      - "8080:80"
-    restart: always
