@@ -23,20 +23,27 @@ if ! command -v node &> /dev/null; then
     sudo apt-get install -y nodejs
 fi
 
-# Generate random password if .env doesn't exist
+# Generate random password and path if .env doesn't exist
 GENERATED_PASS=""
 if [ ! -f .env ]; then
     echo "⚠️  .env file not found. Generating secure defaults..."
     GENERATED_PASS=$(openssl rand -base64 12)
+    RANDOM_SUFFIX=$(openssl rand -hex 4)
     cat > .env << EOL
 PORT=3000
 ADMIN_USER=admin
 ADMIN_PASS=$GENERATED_PASS
-ADMIN_PATH=/admin
+ADMIN_PATH=/admin_$RANDOM_SUFFIX
 DEEPSEEK_API_KEY=
 DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
 EOL
-    echo "✅ Created .env with generated password."
+    echo "✅ Created .env with generated password and admin path."
+fi
+
+# Ensure ADMIN_PATH exists in .env if it was missing
+if ! grep -q "ADMIN_PATH" .env; then
+    RANDOM_SUFFIX=$(openssl rand -hex 4)
+    echo "ADMIN_PATH=/admin_$RANDOM_SUFFIX" >> .env
 fi
 
 # 1. Install Dependencies
@@ -64,10 +71,11 @@ pm2 start server/index.js --name "life-k-line"
 pm2 save
 
 # Get Admin Path and User from .env
-ADMIN_PATH=$(grep ADMIN_PATH .env | cut -d '=' -f2)
-ADMIN_USER=$(grep ADMIN_USER .env | cut -d '=' -f2)
+# Use tr -d '\r' to handle potential Windows line endings
+ADMIN_PATH=$(grep ADMIN_PATH .env | cut -d '=' -f2 | tr -d '\r')
+ADMIN_USER=$(grep ADMIN_USER .env | cut -d '=' -f2 | tr -d '\r')
 # If we generated a password, use it, otherwise try to read it (might be masked/complex, so just warn)
-CURRENT_PASS=$(grep ADMIN_PASS .env | cut -d '=' -f2)
+CURRENT_PASS=$(grep ADMIN_PASS .env | cut -d '=' -f2 | tr -d '\r')
 
 echo "
 🎉 Deployment Complete! Service is running.

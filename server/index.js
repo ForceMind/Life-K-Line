@@ -278,6 +278,15 @@ app.use(config.ADMIN_PATH, express.static(path.join(__dirname, 'public')));
 // Serve Main App (Frontend)
 app.use(express.static(path.join(__dirname, '../dist')));
 
-app.listen(config.PORT, () => {
-  console.log(`Server running on http://localhost:${config.PORT}`);
+// Handle SPA routing - return index.html for all non-API routes
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api') || req.path.startsWith(config.ADMIN_PATH)) {
+    return res.status(404).json({ error: 'Not Found' });
+  }
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
+app.listen(config.PORT, '0.0.0.0', () => {
+  console.log(`Server running on http://0.0.0.0:${config.PORT}`);
+  console.log(`Admin Panel accessible at: http://0.0.0.0:${config.PORT}${config.ADMIN_PATH}`);
 });
