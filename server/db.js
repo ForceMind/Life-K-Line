@@ -1,11 +1,16 @@
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let db;
 
 export const initDb = async () => {
   db = await open({
-    filename: './server/database.sqlite',
+    filename: path.join(__dirname, 'database.sqlite'),
     driver: sqlite3.Database
   });
 

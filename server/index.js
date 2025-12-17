@@ -29,7 +29,7 @@ app.use(express.json());
 app.set('trust proxy', true); // Trust proxy for IP logging
 
 // Initialize DB
-initDb();
+// initDb(); // Moved to startServer
 
 // Helper to update .env file
 const updateEnvFile = (newConfig) => {
@@ -286,7 +286,19 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
-app.listen(config.PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://0.0.0.0:${config.PORT}`);
-  console.log(`Admin Panel accessible at: http://0.0.0.0:${config.PORT}${config.ADMIN_PATH}`);
-});
+// Initialize DB and Start Server
+const startServer = async () => {
+  try {
+    await initDb();
+    
+    app.listen(config.PORT, '0.0.0.0', () => {
+      console.log(`Server running on http://0.0.0.0:${config.PORT}`);
+      console.log(`Admin Panel accessible at: http://0.0.0.0:${config.PORT}${config.ADMIN_PATH}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+startServer();

@@ -58,13 +58,14 @@ Life K-Line 是一个基于 AI 的趣味性命理分析工具，它将中国传�
    ```bash
    # 如果没有安装 git，请先运行: sudo apt update && sudo apt install git -y
    git clone https://github.com/ForceMind/Life-K-Line.git
-   cd life-k-line
+   cd Life-K-Line
    ```
 
 2. **运行部署脚本**：
    ```bash
    chmod +x deploy.sh
    ./deploy.sh
+    sudo bash deploy.sh
    ```
 
 脚本会自动：
