@@ -29,7 +29,7 @@ Life K-Line 是一个基于 AI 的趣味性命理分析工具，它将中国传�
 1. 克隆项目并安装依赖：
    ```bash
    git clone https://github.com/ForceMind/Life-K-Line.git
-   cd life-k-line
+   cd life-k-line 
    npm install
    ```
 
