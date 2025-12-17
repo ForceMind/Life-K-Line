@@ -124,15 +124,20 @@ app.post('/api/admin/login', adminAuth, (req, res) => {
 
 // Get Config
 app.get('/api/admin/config', adminAuth, (req, res) => {
-  res.json({
-    PORT: config.PORT,
-    ADMIN_USER: config.ADMIN_USER,
-    // Mask password
-    ADMIN_PASS: '******', 
-    DEEPSEEK_API_KEY: config.DEEPSEEK_API_KEY ? '******' + config.DEEPSEEK_API_KEY.slice(-4) : '',
-    DEEPSEEK_BASE_URL: config.DEEPSEEK_BASE_URL,
-    DEEPSEEK_MODEL: config.DEEPSEEK_MODEL
-  });
+  try {
+    res.json({
+      PORT: config.PORT,
+      ADMIN_USER: config.ADMIN_USER,
+      // Mask password
+      ADMIN_PASS: '******', 
+      DEEPSEEK_API_KEY: config.DEEPSEEK_API_KEY ? '******' + config.DEEPSEEK_API_KEY.slice(-4) : '',
+      DEEPSEEK_BASE_URL: config.DEEPSEEK_BASE_URL,
+      DEEPSEEK_MODEL: config.DEEPSEEK_MODEL
+    });
+  } catch (error) {
+    console.error('Error fetching config:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 // Update Config
@@ -192,9 +197,18 @@ app.post('/api/admin/generate-cards', adminAuth, async (req, res) => {
 
 // List Cards
 app.get('/api/admin/cards', adminAuth, async (req, res) => {
-  const db = getDb();
-  const cards = await db.all('SELECT * FROM cards ORDER BY created_at DESC');
-  res.json({ cards });
+  try {
+    const db = getDb();
+    if (!db) {
+      console.error('Database instance is null');
+      return res.status(500).json({ error: 'Database not initialized' });
+    }
+    const cards = await db.all('SELECT * FROM cards ORDER BY created_at DESC');
+    res.json({ cards });
+  } catch (error) {
+    console.error('Error fetching cards:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 // Get Card Logs
@@ -254,9 +268,9 @@ app.post('/api/generate-report', verifyCard, async (req, res) => {
 
   try {
     const response = await axios.post(
-      `${configconfig.DEEPSEEK_MODELSEEK_BASE_URL}/chat/completions`,
+      `${config.DEEPSEEK_BASE_URL}/chat/completions`,
       {
-        model: model || 'deepseek-chat',
+        model: config.DEEPSEEK_MODEL || 'deepseek-chat',
         messages,
         temperature: 0.7
       },
