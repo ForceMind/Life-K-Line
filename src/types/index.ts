@@ -56,7 +56,7 @@ export interface BaziResult {
 }
 
 export interface AIConfig {
-  apiKey: string;
-  baseUrl: string;
+  cardKey: string; // Changed from apiKey to cardKey
+  baseUrl: string; // Now points to local server usually
   model: string;
 }

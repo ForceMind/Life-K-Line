@@ -180,8 +180,8 @@ const handleStart = () => {
         <!-- Settings Trigger -->
         <div class="mt-6 text-center">
           <button @click="showSettings = true" class="text-xs text-gray-400 hover:text-gray-600 flex items-center justify-center gap-1 mx-auto transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-            配置 API Key
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+            输入卡密
           </button>
         </div>
       </div>
@@ -190,24 +190,26 @@ const handleStart = () => {
     <!-- Settings Modal -->
     <div v-if="showSettings" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-        <h2 class="text-xl font-bold mb-4 text-gray-900">API 设置</h2>
+        <h2 class="text-xl font-bold mb-4 text-gray-900">验证卡密</h2>
         <div class="space-y-4">
           <div>
-            <label class="block text-xs text-gray-500 mb-1">API Base URL</label>
-            <input v-model="apiConfig.baseUrl" type="text" class="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none" placeholder="https://api.openai.com/v1">
+            <label class="block text-xs text-gray-500 mb-1">请输入您的卡密 (Card Key)</label>
+            <input v-model="apiConfig.cardKey" type="text" class="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none font-mono" placeholder="LK-XXXX-XXXX">
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">API Key</label>
-            <input v-model="apiConfig.apiKey" type="password" class="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none" placeholder="sk-...">
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Model Name</label>
-            <input v-model="apiConfig.model" type="text" class="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none" placeholder="gpt-3.5-turbo">
-          </div>
+          <!-- Hidden Advanced Settings -->
+          <details class="text-xs text-gray-400">
+            <summary class="cursor-pointer hover:text-gray-600">高级设置 (可选)</summary>
+            <div class="mt-2 space-y-2 pl-2 border-l-2 border-gray-100">
+               <div>
+                <label class="block text-xs text-gray-500 mb-1">Model Name</label>
+                <input v-model="apiConfig.model" type="text" class="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none" placeholder="deepseek-chat">
+              </div>
+            </div>
+          </details>
         </div>
         <div class="mt-6 flex justify-end gap-3">
           <button @click="showSettings = false" class="px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors">取消</button>
-          <button @click="saveConfig" class="px-4 py-2 bg-black hover:bg-gray-800 text-white rounded transition-colors">保存</button>
+          <button @click="saveConfig" class="px-4 py-2 bg-black hover:bg-gray-800 text-white rounded transition-colors">确认</button>
         </div>
       </div>
     </div>

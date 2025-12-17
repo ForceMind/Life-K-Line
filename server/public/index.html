@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life K-Line 卡密管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-8">
+    <div id="app" class="max-w-6xl mx-auto">
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+            <h1 class="text-2xl font-bold mb-4 text-gray-800">🔑 卡密管理后台</h1>
+            
+            <!-- Login -->
+            <div v-if="!isLoggedIn" class="max-w-md mx-auto mt-10">
+                <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                    <h2 class="text-lg font-bold mb-4">管理员登录</h2>
+                    <div class="space-y-4">
+                        <input v-model="loginForm.username" type="text" placeholder="用户名" class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:border-blue-500">
+                        <input v-model="loginForm.password" type="password" placeholder="密码" class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:border-blue-500">
+                        <button @click="login" class="w-full bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition">登录</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard -->
+            <div v-else>
+                <div class="flex justify-between items-center mb-6">
+                    <div class="text-sm text-gray-500">管理员: {{ loginForm.username }}</div>
+                    <div class="flex gap-4">
+                        <button @click="showSettings = true" class="text-blue-600 text-sm hover:underline">系统设置</button>
+                        <button @click="logout" class="text-red-500 text-sm hover:underline">退出</button>
+                    </div>
+                </div>
+
+                <!-- Settings Modal -->
+                <div v-if="showSettings" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
+                        <h2 class="text-xl font-bold mb-4">系统设置</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">管理员用户名</label>
+                                <input v-model="configForm.ADMIN_USER" type="text" class="w-full border rounded px-3 py-2">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">管理员密码</label>
+                                <input v-model="configForm.ADMIN_PASS" type="password" placeholder="不修改请留空" class="w-full border rounded px-3 py-2">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">DeepSeek API Key</label>
+                                <input v-model="configForm.DEEPSEEK_API_KEY" type="password" placeholder="不修改请留空" class="w-full border rounded px-3 py-2">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">DeepSeek Base URL</label>
+                                <input v-model="configForm.DEEPSEEK_BASE_URL" type="text" class="w-full border rounded px-3 py-2">
+                            </div>
+                        </div>
+                        <div class="mt-6 flex justify-end gap-3">
+                            <button @click="showSettings = false" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">取消</button>
+                            <button @click="saveConfig" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">保存配置</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Generator -->
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-8">
+                    <h2 class="font-bold text-gray-700 mb-3">生成新卡密</h2>
+                    <div class="flex gap-4 items-center flex-wrap">
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm text-gray-600">数量:</label>
+                            <input v-model.number="generateCount" type="number" min="1" max="100" class="w-20 border border-gray-300 rounded px-2 py-1">
+                        </div>
+                        <button @click="generateCards" :disabled="loading" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition disabled:opacity-50">
+                            {{ loading ? '生成中...' : '一键生成' }}
+                        </button>
+                    </div>
+                    <!-- New Cards Result -->
+                    <div v-if="newCards.length" class="mt-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="text-sm text-green-600">生成成功！</div>
+                            <button @click="copyNewCards" class="text-blue-600 text-xs hover:underline">复制全部</button>
+                        </div>
+                        <textarea readonly class="w-full h-32 p-3 border border-gray-300 rounded font-mono text-sm bg-white" :value="newCards.join('\n')"></textarea>
+                    </div>
+                </div>
+
+                <!-- List -->
+                <div>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="font-bold text-gray-700">卡密列表 ({{ cards.length }})</h2>
+                        <div class="flex gap-2">
+                            <button @click="exportCSV" class="text-green-600 text-sm hover:underline">导出CSV</button>
+                            <button @click="fetchCards" class="text-blue-600 text-sm hover:underline">刷新列表</button>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-600 text-sm">
+                                    <th class="p-3 border-b">ID</th>
+                                    <th class="p-3 border-b">卡密</th>
+                                    <th class="p-3 border-b">状态</th>
+                                    <th class="p-3 border-b">使用次数</th>
+                                    <th class="p-3 border-b">创建时间</th>
+                                    <th class="p-3 border-b">激活时间</th>
+                                    <th class="p-3 border-b">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm">
+                                <tr v-for="card in cards" :key="card.id" class="hover:bg-gray-50 border-b last:border-0">
+                                    <td class="p-3 text-gray-500">{{ card.id }}</td>
+                                    <td class="p-3 font-mono font-bold text-gray-800">{{ card.code }}</td>
+                                    <td class="p-3">
+                                        <span :class="{
+                                            'bg-green-100 text-green-800': card.status === 'unused',
+                                            'bg-blue-100 text-blue-800': card.status === 'active',
+                                            'bg-gray-100 text-gray-800': card.status === 'used'
+                                        }" class="px-2 py-1 rounded text-xs">
+                                            {{ statusMap[card.status] || card.status }}
+                                        </span>
+                                    </td>
+                                    <td class="p-3 text-gray-800">{{ card.use_count || 0 }}</td>
+                                    <td class="p-3 text-gray-500">{{ formatDate(card.created_at) }}</td>
+                                    <td class="p-3 text-gray-500">{{ formatDate(card.activated_at) }}</td>
+                                    <td class="p-3">
+                                        <button @click="viewLogs(card)" class="text-blue-600 hover:underline text-xs">查看日志</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Modal -->
+        <div v-if="showLogsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
+                <div class="p-4 border-b flex justify-between items-center">
+                    <h3 class="font-bold">使用日志 - {{ currentCard?.code }}</h3>
+                    <button @click="showLogsModal = false" class="text-gray-500 hover:text-gray-700">✕</button>
+                </div>
+                <div class="p-4 overflow-y-auto flex-1">
+                    <table class="w-full text-left text-sm">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-600">
+                                <th class="p-2">时间</th>
+                                <th class="p-2">IP</th>
+                                <th class="p-2">设备/浏览器</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="log in currentLogs" :key="log.id" class="border-b">
+                                <td class="p-2">{{ formatDate(log.timestamp) }}</td>
+                                <td class="p-2 font-mono">{{ log.ip }}</td>
+                                <td class="p-2 truncate max-w-xs" :title="log.user_agent">{{ log.user_agent }}</td>
+                            </tr>
+                            <tr v-if="currentLogs.length === 0">
+                                <td colspan="3" class="p-4 text-center text-gray-500">暂无使用记录</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const loginForm = ref({ username: '', password: '' });
+                const token = ref(localStorage.getItem('admin_token') || '');
+                const isLoggedIn = ref(false);
+                const cards = ref([]);
+                const generateCount = ref(1);
+                const newCards = ref([]);
+                const loading = ref(false);
+                const showLogsModal = ref(false);
+                const showSettings = ref(false);
+                const currentCard = ref(null);
+                const currentLogs = ref([]);
+                const configForm = ref({});
+
+                const statusMap = {
+                    'unused': '未使用',
+                    'active': '使用中',
+                    'used': '已失效'
+                };
+
+                const formatDate = (dateStr) => {
+                    if (!dateStr) return '-';
+                    return new Date(dateStr).toLocaleString();
+                };
+
+                const getHeaders = () => ({
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token.value}`
+                });
+
+                const login = async () => {
+                    try {
+                        const res = await fetch('/api/admin/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(loginForm.value)
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            token.value = data.token;
+                            localStorage.setItem('admin_token', data.token);
+                            isLoggedIn.value = true;
+                            fetchCards();
+                            fetchConfig();
+                        } else {
+                            alert('登录失败');
+                        }
+                    } catch (e) {
+                        alert('登录错误');
+                    }
+                };
+
+                const logout = () => {
+                    localStorage.removeItem('admin_token');
+                    token.value = '';
+                    isLoggedIn.value = false;
+                    cards.value = [];
+                    loginForm.value = { username: '', password: '' };
+                };
+
+                const fetchConfig = async () => {
+                    try {
+                        const res = await fetch('/api/admin/config', { headers: getHeaders() });
+                        if (res.ok) {
+                            const data = await res.json();
+                            configForm.value = {
+                                ADMIN_USER: data.ADMIN_USER,
+                                ADMIN_PASS: '', // Don't show password
+                                DEEPSEEK_API_KEY: '', // Don't show full key
+                                DEEPSEEK_BASE_URL: data.DEEPSEEK_BASE_URL
+                            };
+                        }
+                    } catch (e) {
+                        console.error('Fetch config failed', e);
+                    }
+                };
+
+                const saveConfig = async () => {
+                    try {
+                        const body = { ...configForm.value };
+                        // Remove empty fields to avoid overwriting with empty strings
+                        if (!body.ADMIN_PASS) delete body.ADMIN_PASS;
+                        if (!body.DEEPSEEK_API_KEY) delete body.DEEPSEEK_API_KEY;
+
+                        const res = await fetch('/api/admin/config', {
+                            method: 'POST',
+                            headers: getHeaders(),
+                            body: JSON.stringify(body)
+                        });
+                        
+                        if (res.ok) {
+                            const data = await res.json();
+                            alert('配置已保存');
+                            showSettings.value = false;
+                            if (data.token) {
+                                token.value = data.token;
+                                localStorage.setItem('admin_token', data.token);
+                                // Update login form if user changed
+                                if (body.ADMIN_USER) loginForm.value.username = body.ADMIN_USER;
+                            }
+                            fetchConfig();
+                        } else {
+                            alert('保存失败');
+                        }
+                    } catch (e) {
+                        alert('保存错误');
+                    }
+                };
+
+                const fetchCards = async () => {
+                    try {
+                        const res = await fetch('/api/admin/cards', { headers: getHeaders() });
+                        if (res.status === 401) {
+                            logout();
+                            return;
+                        }
+                        const data = await res.json();
+                        cards.value = data.cards;
+                        isLoggedIn.value = true;
+                    } catch (e) {
+                        console.error(e);
+                    }
+                };
+
+                const generateCards = async () => {
+                    loading.value = true;
+                    newCards.value = [];
+                    try {
+                        const res = await fetch('/api/admin/generate-cards', {
+                            method: 'POST',
+                            headers: getHeaders(),
+                            body: JSON.stringify({ count: generateCount.value })
+                        });
+                        const data = await res.json();
+                        newCards.value = data.cards;
+                        await fetchCards();
+                    } catch (e) {
+                        alert(e.message);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const viewLogs = async (card) => {
+                    currentCard.value = card;
+                    currentLogs.value = [];
+                    showLogsModal.value = true;
+                    try {
+                        const res = await fetch(`/api/admin/logs/${card.code}`, { headers: getHeaders() });
+                        const data = await res.json();
+                        currentLogs.value = data.logs;
+                    } catch (e) {
+                        alert('获取日志失败');
+                    }
+                };
+
+                const copyNewCards = () => {
+                    navigator.clipboard.writeText(newCards.value.join('\n'));
+                    alert('已复制到剪贴板');
+                };
+
+                const exportCSV = () => {
+                    const headers = ['ID', 'Code', 'Status', 'Use Count', 'Created At', 'Activated At'];
+                    const rows = cards.value.map(c => [
+                        c.id, c.code, c.status, c.use_count, c.created_at, c.activated_at
+                    ]);
+                    const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'cards_export.csv';
+                    link.click();
+                };
+
+                onMounted(() => {
+                    if (token.value) {
+                        fetchCards();
+                        fetchConfig();
+                    }
+                });
+
+                return {
+                    loginForm,
+                    isLoggedIn,
+                    cards,
+                    generateCount,
+                    newCards,
+                    loading,
+                    statusMap,
+                    showLogsModal,
+                    showSettings,
+                    currentCard,
+                    currentLogs,
+                    configForm,
+                    login,
+                    logout,
+                    fetchCards,
+                    generateCards,
+                    viewLogs,
+                    copyNewCards,
+                    exportCSV,
+                    formatDate,
+                    saveConfig
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

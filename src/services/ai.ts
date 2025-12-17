@@ -64,28 +64,24 @@ export const generateBaseReport = async (
 `;
 
   try {
+    // Use local backend proxy
     const response = await axios.post(
-      `${config.baseUrl}/chat/completions`,
+      '/api/generate-report',
       {
+        cardKey: config.cardKey,
         model: config.model,
         messages: [
           { role: 'system', content: 'You are a helpful assistant that outputs JSON only.' },
           { role: 'user', content: prompt }
-        ],
-        temperature: 0.7
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${config.apiKey}`
-        }
+        ]
       }
     );
 
     return JSON.parse(cleanJson(response.data.choices[0].message.content));
-  } catch (error) {
+  } catch (error: any) {
     console.error('Base Report Generation Error:', error);
-    throw new Error('基础分析生成失败，请检查 API Key 或网络连接。');
+    const msg = error.response?.data?.error || error.message || '基础分析生成失败';
+    throw new Error(msg);
   }
 };
 
@@ -122,21 +118,16 @@ export const generateBatchData = async (
 `;
 
   try {
+    // Use local backend proxy
     const response = await axios.post(
-      `${config.baseUrl}/chat/completions`,
+      '/api/generate-report',
       {
+        cardKey: config.cardKey,
         model: config.model,
         messages: [
           { role: 'system', content: 'You are a helpful assistant that outputs JSON only.' },
           { role: 'user', content: prompt }
-        ],
-        temperature: 0.7
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${config.apiKey}`
-        }
+        ]
       }
     );
 

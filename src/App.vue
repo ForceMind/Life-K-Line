@@ -13,9 +13,9 @@ const isGenerating = ref(false);
 
 // API 配置
 const apiConfig = reactive<AIConfig>({
-  apiKey: '',
-  baseUrl: 'https://api.openai.com/v1',
-  model: 'gpt-3.5-turbo'
+  cardKey: '',
+  baseUrl: '', // Not used for local proxy
+  model: 'deepseek-chat'
 });
 
 const handleConfigUpdate = (config: AIConfig) => {
@@ -37,7 +37,7 @@ const startBatchGeneration = async (bazi: BaziResult, birthYear: number) => {
     const startYear = birthYear + currentAge;
     
     try {
-      const newPoints = await generateBatchData(apiConfig.apiKey ? bazi : bazi, apiConfig, currentAge, endAge, startYear);
+      const newPoints = await generateBatchData(bazi, apiConfig, currentAge, endAge, startYear);
       
       if (analysisResult.value && newPoints.length > 0) {
         // 追加数据，Vue 的响应式系统会自动更新图表
@@ -53,8 +53,8 @@ const startBatchGeneration = async (bazi: BaziResult, birthYear: number) => {
 };
 
 const handleStart = async (userInput: any) => {
-  if (!apiConfig.apiKey) {
-    alert('请先点击底部按钮配置 API Key');
+  if (!apiConfig.cardKey) {
+    alert('请先点击底部按钮输入卡密');
     return;
   }
 

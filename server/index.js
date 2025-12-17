@@ -1,0 +1,269 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import axios from 'axios';
+import { initDb, getDb } from './db.js';
+import crypto from 'crypto';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+// Mutable configuration variables
+let config = {
+  PORT: process.env.PORT || 3000,
+  ADMIN_USER: process.env.ADMIN_USER || 'admin',
+  ADMIN_PASS: process.env.ADMIN_PASS || 'admin123',
+  ADMIN_PATH: process.env.ADMIN_PATH || '/admin',
+  DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY || '',
+  DEEPSEEK_BASE_URL: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1'
+};
+
+app.use(cors());
+app.use(express.json());
+app.set('trust proxy', true); // Trust proxy for IP logging
+
+// Initialize DB
+initDb();
+
+// Helper to update .env file
+const updateEnvFile = (newConfig) => {
+  const envPath = path.join(__dirname, '../.env');
+  let envContent = '';
+  
+  if (fs.existsSync(envPath)) {
+    envContent = fs.readFileSync(envPath, 'utf8');
+  }
+
+  Object.keys(newConfig).forEach(key => {
+    const regex = new RegExp(`^${key}=.*`, 'm');
+    if (regex.test(envContent)) {
+      envContent = envContent.replace(regex, `${key}=${newConfig[key]}`);
+    } else {
+      envContent += `\n${key}=${newConfig[key]}`;
+    }
+  });
+
+  fs.writeFileSync(envPath, envContent.trim() + '\n');
+  
+  // Update runtime config
+  Object.assign(config, newConfig);
+};
+
+// Admin Auth Middleware
+const adminAuth = (req, res, next) => {
+  const { username, password } = req.body;
+  // Check body (for login) or headers (for API calls)
+  const authHeader = req.headers.authorization;
+  
+  if (authHeader) {
+    const token = authHeader.split(' ')[1]; // Bearer <token>
+    // Simple token: base64(username:password)
+    try {
+      const decoded = Buffer.from(token, 'base64').toString().split(':');
+      if (decoded[0] === config.ADMIN_USER && decoded[1] === config.ADMIN_PASS) {
+        return next();
+      }
+    } catch (e) {
+      return res.status(401).json({ error: 'Invalid Token' });
+    }
+  }
+  
+  if (username === config.ADMIN_USER && password === config.ADMIN_PASS) {
+    return next();
+  }
+
+  return res.status(401).json({ error: 'Unauthorized' });
+};
+
+// Middleware to verify card
+const verifyCard = async (req, res, next) => {
+  const { cardKey } = req.body;
+  if (!cardKey) return res.status(400).json({ error: 'Missing card key' });
+
+  const db = getDb();
+  const card = await db.get('SELECT * FROM cards WHERE code = ?', cardKey);
+
+  if (!card) {
+    return res.status(401).json({ error: 'Invalid card key' });
+  }
+
+  if (card.status === 'used') {
+    return res.status(403).json({ error: 'Card key has been used' });
+  }
+
+  if (card.status === 'active') {
+    // Check expiration (e.g., 24 hours validity after activation)
+    const now = new Date();
+    const expiresAt = new Date(card.expires_at);
+    if (now > expiresAt) {
+      await db.run('UPDATE cards SET status = ? WHERE code = ?', ['used', cardKey]);
+      return res.status(403).json({ error: 'Card key expired' });
+    }
+  }
+
+  req.card = card;
+  next();
+};
+
+// --- Admin Routes ---
+
+// Admin Login
+app.post('/api/admin/login', adminAuth, (req, res) => {
+  // If middleware passes, credentials are correct
+  // Return a simple token (base64 of user:pass) for client to store
+  const token = Buffer.from(`${config.ADMIN_USER}:${config.ADMIN_PASS}`).toString('base64');
+  res.json({ token });
+});
+
+// Get Config
+app.get('/api/admin/config', adminAuth, (req, res) => {
+  res.json({
+    ADMIN_USER: config.ADMIN_USER,
+    // Mask password
+    ADMIN_PASS: '******', 
+    DEEPSEEK_API_KEY: config.DEEPSEEK_API_KEY ? '******' + config.DEEPSEEK_API_KEY.slice(-4) : '',
+    DEEPSEEK_BASE_URL: config.DEEPSEEK_BASE_URL
+  });
+});
+
+// Update Config
+app.post('/api/admin/config', adminAuth, (req, res) => {
+  const { ADMIN_USER, ADMIN_PASS, DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL } = req.body;
+  const newConfig = {};
+
+  if (ADMIN_USER) newConfig.ADMIN_USER = ADMIN_USER;
+  if (ADMIN_PASS) newConfig.ADMIN_PASS = ADMIN_PASS;
+  if (DEEPSEEK_API_KEY) newConfig.DEEPSEEK_API_KEY = DEEPSEEK_API_KEY;
+  if (DEEPSEEK_BASE_URL) newConfig.DEEPSEEK_BASE_URL = DEEPSEEK_BASE_URL;
+
+  try {
+    updateEnvFile(newConfig);
+    
+    // If credentials changed, return new token
+    let newToken = null;
+    if (ADMIN_USER || ADMIN_PASS) {
+      newToken = Buffer.from(`${config.ADMIN_USER}:${config.ADMIN_PASS}`).toString('base64');
+    }
+
+    res.json({ success: true, token: newToken });
+  } catch (error) {
+    console.error('Update config error:', error);
+    res.status(500).json({ error: 'Failed to update configuration' });
+  }
+});
+
+// Generate Cards
+app.post('/api/admin/generate-cards', adminAuth, async (req, res) => {
+  const { count = 1 } = req.body;
+  const db = getDb();
+  const cards = [];
+
+  for (let i = 0; i < count; i++) {
+    const code = 'LK-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+    await db.run('INSERT INTO cards (code) VALUES (?)', code);
+    cards.push(code);
+  }
+
+  res.json({ cards });
+});
+
+// List Cards
+app.get('/api/admin/cards', adminAuth, async (req, res) => {
+  const db = getDb();
+  const cards = await db.all('SELECT * FROM cards ORDER BY created_at DESC');
+  res.json({ cards });
+});
+
+// Get Card Logs
+app.get('/api/admin/logs/:code', adminAuth, async (req, res) => {
+  const { code } = req.params;
+  const db = getDb();
+  const logs = await db.all('SELECT * FROM card_logs WHERE card_code = ? ORDER BY timestamp DESC', code);
+  res.json({ logs });
+});
+
+// --- User Routes ---
+
+// Verify Card (Simple check)
+app.post('/api/verify-card', async (req, res) => {
+  const { cardKey } = req.body;
+  const db = getDb();
+  const card = await db.get('SELECT * FROM cards WHERE code = ?', cardKey);
+
+  if (!card) return res.json({ valid: false, message: '无效卡密' });
+  if (card.status === 'used') return res.json({ valid: false, message: '卡密已失效' });
+  
+  if (card.status === 'active') {
+     const now = new Date();
+     const expiresAt = new Date(card.expires_at);
+     if (now > expiresAt) return res.json({ valid: false, message: '卡密已过期' });
+  }
+
+  res.json({ valid: true, status: card.status });
+});
+
+// Generate Report (Proxy to AI)
+app.post('/api/generate-report', verifyCard, async (req, res) => {
+  const { messages, model } = req.body;
+  const db = getDb();
+  const card = req.card;
+  const ip = req.ip || req.connection.remoteAddress;
+  const userAgent = req.headers['user-agent'] || 'Unknown';
+
+  // Log usage
+  await db.run(
+    'INSERT INTO card_logs (card_code, ip, user_agent, device_info) VALUES (?, ?, ?, ?)',
+    [card.code, ip, userAgent, userAgent] // device_info can be parsed from UA if needed, for now just store UA
+  );
+
+  // Update card stats
+  await db.run('UPDATE cards SET use_count = use_count + 1 WHERE code = ?', card.code);
+
+  // Activate card if unused
+  if (card.status === 'unused') {
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours validity
+    await db.run(
+      'UPDATE cards SET status = ?, activated_at = ?, expires_at = ? WHERE code = ?',
+      ['active', new Date().toISOString(), expiresAt.toISOString(), card.code]
+    );
+  }
+
+  try {
+    const response = await axios.post(
+      `${config.DEEPSEEK_BASE_URL}/chat/completions`,
+      {
+        model: model || 'deepseek-chat',
+        messages,
+        temperature: 0.7
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.DEEPSEEK_API_KEY}`
+        }
+      }
+    );
+
+    res.json(response.data);
+  } catch (error) {
+    console.error('AI API Error:', error.response?.data || error.message);
+    res.status(500).json({ error: 'AI Service Error' });
+  }
+});
+
+// Serve Admin Dashboard
+app.use(config.ADMIN_PATH, express.static(path.join(__dirname, 'public')));
+
+// Serve Main App (Frontend)
+app.use(express.static(path.join(__dirname, '../dist')));
+
+app.listen(config.PORT, () => {
+  console.log(`Server running on http://localhost:${config.PORT}`);
+});

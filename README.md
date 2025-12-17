@@ -4,71 +4,88 @@ Life K-Line 是一个基于 AI 的趣味性命理分析工具，它将中国传�
 
 ## ✨ 主要功能
 
-- **八字排盘与预览**: 输入年月日时，即可实时计算并预览四柱干支、起运年龄和第一步大运。
-- **AI 命理分析**: 调用 OpenAI 兼容的 API，基于八字信息生成包括性格、事业、财富、婚姻、健康等多维度的分析报告。
-- **生命 K 线可视化**: 将 AI 分析的人生运势数据（0-80岁）渲染成交互式的 ECharts K线图，直观展示人生轨迹。
-- **渐进式加载**: 报告和K线图采用分批加载策略，先快速展示基础报告和早期数据，后台再逐步请求并绘制后续年份，优化用户体验。
-- **报告导出**: 支持将生成的完整命理分析报告（包含K线图）一键导出为 PNG 图片，方便分享和保存。
-- **响应式设计**: 采用 Tailwind CSS 构建，界面在桌面和移动设备上均有良好体验。
+- **八字排盘与预览**: 输入年月日时，即可实时计算并预览四柱干支。
+- **AI 命理分析**: 基于八字信息生成包括性格、事业、财富、婚姻、健康等多维度的分析报告。
+- **生命 K 线可视化**: 将 AI 分析的人生运势数据（0-80岁）渲染成交互式的 ECharts K线图。
+- **卡密系统**: 商业化支持，用户需输入“卡密”才能生成报告，保护 API 资源。
+- **后台管理**: 提供 Web 管理后台，管理员可一键生成、查看和管理卡密。
+- **报告导出**: 支持将生成的完整命理分析报告（包含K线图）一键导出为 PNG 图片。
 
 ## 🛠️ 技术栈
 
-- **前端框架**: Vue 3 + Vite
-- **语言**: TypeScript
-- **UI 框架**: Tailwind CSS
-- **图表库**: Apache ECharts
-- **核心算法库**: [lunar-javascript](https.github.com/6tail/lunar-javascript) (用于精准的农历和八字计算)
-- **HTTP 请求**: Axios
-- **图片导出**: html2canvas
+- **前端**: Vue 3, TypeScript, Tailwind CSS, ECharts
+- **后端**: Node.js, Express
+- **数据库**: SQLite (无需安装额外数据库软件)
+- **AI**: DeepSeek API (或其他兼容 OpenAI 格式的 API)
 
 ## 🚀 快速开始
 
 ### 1. 环境准备
 
 - **Node.js**: `v18.x` 或更高版本。
-- **包管理器**: `npm` 或 `pnpm` / `yarn`。
-- **API Key**: 一个 OpenAI 兼容的 API Key（例如 OpenAI, Groq, DeepSeek 等）。
 
-### 2. 安装
+### 2. 安装与配置
 
-克隆本项目到本地：
+1. 克隆项目并安装依赖：
+   ```bash
+   git clone https://github.com/ForceMind/Life-K-Line.git
+   cd life-k-line
+   npm install
+   ```
+
+2. 配置环境变量：
+   在项目根目录创建 `.env` 文件，填入以下内容：
+   ```env
+   # 后端服务端口
+   PORT=3000
+   
+   # 管理员后台配置
+   ADMIN_USER=admin
+   ADMIN_PASS=admin123
+   ADMIN_PATH=/admin  # 自定义后台访问路径
+   
+   # DeepSeek API 配置
+   DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxx
+   DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
+   ```
+
+### 3. 运行与部署
+
+#### Linux/Mac 一键自动化部署
+无需手动编辑任何文件，直接运行：
 ```bash
-git clone <your-repository-url>
-cd life-k-line
+chmod +x deploy.sh
+./deploy.sh
 ```
+脚本会自动：
+1. 检查并安装 Node.js (如果缺失)。
+2. 生成随机安全的管理员密码（首次运行）。
+3. 安装依赖并构建项目。
+4. 使用 PM2 启动服务。
+5. **最后会显示登录账号和密码，请务必记录。**
 
-安装项目依赖：
-```bash
-npm install
-```
+#### Windows 一键启动
+双击运行根目录下的 `start.bat` 脚本。
 
-### 3. 配置
+### 4. 访问与配置
 
-本项目无需配置文件或 `.env` 文件。API Key 的配置直接在应用的用户界面中完成。
+启动成功后：
 
-1.  运行项目后，在主输入界面的右下角，点击 **“配置 API Key”** 按钮。
-2.  在弹出的模态框中，填入你的 API Base URL 和 API Key。
-    -   **Base URL**: 默认为 `https://api.openai.com/v1`。如果你使用第三方兼容服务，请修改为对应的地址。
-    -   **API Key**: 填入你的密钥。
-    -   **模型**: 选择你希望使用的模型，默认为 `gpt-3.5-turbo`。
-3.  点击“保存”，配置将保存在当前会话中。
+- **用户端**: [http://localhost:3000](http://localhost:3000)
+- **管理后台**: [http://localhost:3000/admin](http://localhost:3000/admin) (默认路径)
 
-### 4. 运行
+**首次登录后：**
+1. 使用部署脚本生成的账号密码登录后台。
+2. 点击右上角的 **“系统设置”**。
+3. 在界面中填入你的 **DeepSeek API Key** 并保存。
+4. 你也可以在此处修改管理员密码。
 
-启动本地开发服务器：
-```bash
-npm run dev
-```
-服务启动后，在浏览器中打开显示的本地地址 (通常是 `http://localhost:5173`) 即可开始使用。
+## 📂 目录结构
 
-## 📦 构建
-
-将项目打包用于生产环境部署：
-```bash
-npm run build
-```
-构建产物将生成在 `dist` 目录中。
-
-## 📜 开源许可
-
-本项目基于 [MIT License](LICENSE) 开源。
+- `src/`: 前端 Vue 源码
+- `server/`: 后端 Node.js 源码
+  - `index.js`: 服务端入口
+  - `db.js`: 数据库操作
+  - `public/`: 后台管理页面静态文件
+- `dist/`: 前端构建产物 (运行 build 后生成)
+- `database.sqlite`: SQLite 数据库文件 (自动生成)
