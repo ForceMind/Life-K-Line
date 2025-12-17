@@ -279,7 +279,8 @@ app.use(config.ADMIN_PATH, express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, '../dist')));
 
 // Handle SPA routing - return index.html for all non-API routes
-app.get('*', (req, res) => {
+// Express 5 requires regex or specific syntax for wildcards
+app.get(/(.*)/, (req, res) => {
   if (req.path.startsWith('/api') || req.path.startsWith(config.ADMIN_PATH)) {
     return res.status(404).json({ error: 'Not Found' });
   }
