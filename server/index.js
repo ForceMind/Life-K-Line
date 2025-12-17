@@ -84,7 +84,7 @@ const adminAuth = (req, res, next) => {
 
 // Middleware to verify card
 const verifyCard = async (req, res, next) => {
-  const { cardKey } = req.body;
+  const { cardKey, baziSignature } = req.body;
   if (!cardKey) return res.status(400).json({ error: 'Missing card key' });
 
   const db = getDb();
@@ -108,6 +108,32 @@ const verifyCard = async (req, res, next) => {
     }
   }
 
+  // --- New Logic: 3 Bazi Limit & Caching ---
+  if (baziSignature) {
+    // 1. Check if this Bazi is already cached for this card
+    const cachedReport = await db.get(
+      'SELECT * FROM reports WHERE card_code = ? AND bazi_signature = ?',
+      [cardKey, baziSignature]
+    );
+
+    if (cachedReport) {
+      // Cache hit! Attach to req to skip AI generation
+      req.cachedReport = JSON.parse(cachedReport.report_data);
+      req.card = card;
+      return next();
+    }
+
+    // 2. If not cached, check how many distinct Bazi this card has used
+    const usageCount = await db.get(
+      'SELECT COUNT(DISTINCT bazi_signature) as count FROM reports WHERE card_code = ?',
+      [cardKey]
+    );
+
+    if (usageCount.count >= 3) {
+      return res.status(403).json({ error: '该卡密已绑定3个八字，无法查询新的八字。' });
+    }
+  }
+
   req.card = card;
   next();
 };
@@ -128,6 +154,7 @@ app.get('/api/admin/config', adminAuth, (req, res) => {
     res.json({
       PORT: config.PORT,
       ADMIN_USER: config.ADMIN_USER,
+      ADMIN_PATH: config.ADMIN_PATH,
       // Mask password
       ADMIN_PASS: '******', 
       DEEPSEEK_API_KEY: config.DEEPSEEK_API_KEY ? '******' + config.DEEPSEEK_API_KEY.slice(-4) : '',
@@ -142,12 +169,13 @@ app.get('/api/admin/config', adminAuth, (req, res) => {
 
 // Update Config
 app.post('/api/admin/config', adminAuth, (req, res) => {
-  const { PORT, ADMIN_USER, ADMIN_PASS, DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL } = req.body;
+  const { PORT, ADMIN_USER, ADMIN_PASS, ADMIN_PATH, DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL } = req.body;
   const newConfig = {};
 
   if (PORT) newConfig.PORT = PORT;
   if (ADMIN_USER) newConfig.ADMIN_USER = ADMIN_USER;
   if (ADMIN_PASS) newConfig.ADMIN_PASS = ADMIN_PASS;
+  if (ADMIN_PATH) newConfig.ADMIN_PATH = ADMIN_PATH;
   if (DEEPSEEK_API_KEY) newConfig.DEEPSEEK_API_KEY = DEEPSEEK_API_KEY;
   if (DEEPSEEK_BASE_URL) newConfig.DEEPSEEK_BASE_URL = DEEPSEEK_BASE_URL;
   if (DEEPSEEK_MODEL) newConfig.DEEPSEEK_MODEL = DEEPSEEK_MODEL;
@@ -161,8 +189,8 @@ app.post('/api/admin/config', adminAuth, (req, res) => {
       newToken = Buffer.from(`${config.ADMIN_USER}:${config.ADMIN_PASS}`).toString('base64');
     }
 
-    // Check if restart is needed (PORT changed)
-    const needsRestart = PORT && PORT !== config.PORT;
+    // Check if restart is needed (PORT or ADMIN_PATH changed)
+    const needsRestart = (PORT && PORT !== config.PORT) || (ADMIN_PATH && ADMIN_PATH !== config.ADMIN_PATH);
 
     res.json({ success: true, token: newToken, restartRequired: needsRestart });
 
@@ -249,8 +277,8 @@ app.post('/api/generate-report', verifyCard, async (req, res) => {
 
   // Log usage
   await db.run(
-    'INSERT INTO card_logs (card_code, ip, user_agent, device_info) VALUES (?, ?, ?, ?)',
-    [card.code, ip, userAgent, userAgent] // device_info can be parsed from UA if needed, for now just store UA
+    'INSERT INTO card_logs (card_code, ip, user_agent, device_info, input_data) VALUES (?, ?, ?, ?, ?)',
+    [card.code, ip, userAgent, userAgent, JSON.stringify(messages)]
   );
 
   // Update card stats
@@ -280,6 +308,14 @@ app.post('/api/generate-report', verifyCard, async (req, res) => {
           'Authorization': `Bearer ${config.DEEPSEEK_API_KEY}`
         }
       }
+    );
+
+    // Update log with output data
+    // We need the last inserted ID. Since we can't easily get it in async flow without result from INSERT,
+    // we'll just update the latest log for this card.
+    await db.run(
+      'UPDATE card_logs SET output_data = ? WHERE id = (SELECT id FROM card_logs WHERE card_code = ? ORDER BY id DESC LIMIT 1)',
+      [JSON.stringify(response.data), card.code]
     );
 
     res.json(response.data);

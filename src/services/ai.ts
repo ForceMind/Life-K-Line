@@ -9,6 +9,9 @@ export const generateBaseReport = async (
   bazi: BaziResult,
   config: AIConfig
 ): Promise<FullAnalysisResult> => {
+  // Generate a unique signature for this Bazi to use for caching
+  const baziSignature = `${bazi.gender}-${bazi.birthDate}-${bazi.yearPillar}-${bazi.monthPillar}-${bazi.dayPillar}-${bazi.hourPillar}`;
+
   const prompt = `
 你是一位精通八字命理和数据可视化的专家。请根据以下用户的八字信息，进行初步的命理分析，并生成前5年（0-4岁）的运势数据。
 
@@ -70,6 +73,7 @@ export const generateBaseReport = async (
       {
         cardKey: config.cardKey,
         model: config.model,
+        baziSignature, // Send signature for caching
         messages: [
           { role: 'system', content: 'You are a helpful assistant that outputs JSON only.' },
           { role: 'user', content: prompt }

@@ -98,6 +98,18 @@ const handleStart = () => {
           </div>
         </div>
 
+        <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
+          <h3 class="font-bold text-blue-800 mb-2 flex items-center gap-2">
+            <span>ℹ️</span> 使用说明
+          </h3>
+          <ul class="text-sm text-blue-700 space-y-1 list-disc list-inside">
+            <li>请输入您的出生信息，系统将自动排盘。</li>
+            <li>需要输入卡密才能生成报告。</li>
+            <li><strong>一个卡密支持查询 3 个不同的八字。</strong></li>
+            <li><strong>卡密激活后 24 小时内有效，期间可反复查看已查询的报告。</strong></li>
+          </ul>
+        </div>
+
         <div class="space-y-6">
           <!-- 基础信息 -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
