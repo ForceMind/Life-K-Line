@@ -15,9 +15,9 @@ const userInput = reactive({
 });
 
 const apiConfig = reactive<AIConfig>({
-  apiKey: '',
-  baseUrl: 'https://api.openai.com/v1',
-  model: 'gpt-3.5-turbo'
+  cardKey: '',
+  baseUrl: '/api',
+  model: 'deepseek-chat'
 });
 
 const showSettings = ref(false);
@@ -45,9 +45,9 @@ onMounted(() => {
   const savedConfig = localStorage.getItem('life-kline-config');
   if (savedConfig) {
     const parsed = JSON.parse(savedConfig);
-    apiConfig.apiKey = parsed.apiKey || '';
-    apiConfig.baseUrl = parsed.baseUrl || 'https://api.openai.com/v1';
-    apiConfig.model = parsed.model || 'gpt-3.5-turbo';
+    apiConfig.cardKey = parsed.cardKey || '';
+    apiConfig.baseUrl = parsed.baseUrl || '/api';
+    apiConfig.model = parsed.model || 'deepseek-chat';
     emit('update-config', apiConfig);
   }
   updatePreview();
