@@ -85,6 +85,8 @@ Life K-Line 是一个基于 AI 的趣味性命理分析工具，它将中国传�
 ```bash
 chmod +x update.sh
 ./update.sh
+
+cd Life-K-Line
 sudo bash update.sh
 ```
 该脚本会：
