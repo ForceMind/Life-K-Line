@@ -137,11 +137,12 @@
                                     <td class="p-3 font-mono font-bold text-gray-800">{{ card.code }}</td>
                                     <td class="p-3">
                                         <span :class="{
-                                            'bg-green-100 text-green-800': card.status === 'unused',
-                                            'bg-blue-100 text-blue-800': card.status === 'active',
-                                            'bg-gray-100 text-gray-800': card.status === 'used'
+                                            'bg-green-100 text-green-800': getCardStatus(card) === 'unused',
+                                            'bg-blue-100 text-blue-800': getCardStatus(card) === 'active',
+                                            'bg-yellow-100 text-yellow-800': getCardStatus(card) === 'expired',
+                                            'bg-gray-100 text-gray-800': getCardStatus(card) === 'used'
                                         }" class="px-2 py-1 rounded text-xs">
-                                            {{ statusMap[card.status] || card.status }}
+                                            {{ statusMap[getCardStatus(card)] }}
                                         </span>
                                     </td>
                                     <td class="p-3 text-gray-800">
@@ -152,7 +153,7 @@
                                     <td class="p-3 text-gray-500">{{ formatDate(card.activated_at) }}</td>
                                     <td class="p-3 flex gap-2">
                                         <button @click="viewLogs(card)" class="text-blue-600 hover:underline text-xs">日志</button>
-                                        <button v-if="card.status !== 'used'" @click="voidCard(card)" class="text-red-600 hover:underline text-xs">作废</button>
+                                        <button v-if="getCardStatus(card) !== 'used' && getCardStatus(card) !== 'expired'" @click="voidCard(card)" class="text-red-600 hover:underline text-xs">作废</button>
                                     </td>
                                 </tr>
                             </tbody>
@@ -247,7 +248,19 @@
                 const statusMap = {
                     'unused': '未使用',
                     'active': '使用中',
+                    'expired': '已过期',
                     'used': '已失效'
+                };
+
+                const getCardStatus = (card) => {
+                    if (card.status === 'used') return 'used';
+                    if (card.status === 'active') {
+                        const now = new Date();
+                        const expiresAt = new Date(card.expires_at);
+                        if (now > expiresAt) return 'expired';
+                        return 'active';
+                    }
+                    return 'unused';
                 };
 
                 const filteredCards = computed(() => {
@@ -259,7 +272,7 @@
                         result = result.filter(c => c.code.toLowerCase().includes(q));
                     }
                     if (filterStatus.value !== 'all') {
-                        result = result.filter(c => c.status === filterStatus.value);
+                        result = result.filter(c => getCardStatus(c) === filterStatus.value);
                     }
 
                     // Sort

@@ -36,7 +36,7 @@ const formatBazi = (input: any) => {
     <div class="bg-white rounded-xl p-6 w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh]">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-bold text-gray-900">历史查询记录</h2>
-        <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600">
+        <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600 p-2">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 18 18"/></svg>
         </button>
       </div>
