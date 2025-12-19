@@ -294,16 +294,118 @@ app.post('/api/generate-report', verifyCard, async (req, res) => {
     return res.json(req.cachedReport);
   }
 
-  const { messages, model, baziSignature } = req.body;
+  const { messages, model, baziSignature, baziData, generationType } = req.body;
   const db = getDb();
   const card = req.card;
   const ip = req.ip || req.connection.remoteAddress;
   const userAgent = req.headers['user-agent'] || 'Unknown';
 
+  let finalMessages = messages;
+
+  // --- Prompt Generation on Server ---
+  if (baziData && generationType) {
+    const { gender, birthDate, yearPillar, monthPillar, dayPillar, hourPillar, startAge, firstDaYun, currentAge, endAge, startYear } = baziData;
+    let prompt = '';
+
+    if (generationType === 'base') {
+      prompt = `
+你是一位精通八字命理和数据可视化的专家，尤其擅长盲派命理技巧。请根据以下用户的八字信息，进行深入的命理分析，并生成前5年（0-4岁）的运势数据。
+
+**用户信息：**
+- 性别：${gender === 'male' ? '男' : '女'}
+- 出生日期：${birthDate}
+- 八字：${yearPillar} ${monthPillar} ${dayPillar} ${hourPillar}
+- 起运：${startAge}岁, 首运：${firstDaYun}
+
+**任务要求：**
+1. **盲派技巧分析**：请运用盲派技巧（如做功、象法、废兴等）逐步分析八字。
+2. **一生运势概览**：分析我的一生运势，涵盖事业、财富、婚姻、健康等各方面。
+3. **具体细节**：尽可能详细具体，指出关键的时间节点和可能发生的事件。
+4. **重点关注**：着重分析大运能赚多少钱，以及健康和婚姻状况。
+5. **诚实评价**：判断出准确的关系模型后输出最终结果，诚实一点评价，用语不用太温和，直击要害。
+6. **输出格式**：请返回一个标准的 JSON 对象，包含 \`analysis\` (命理分析) 和 \`chartData\` (0-4岁的K线数据) 两个部分。不要包含任何 Markdown 标记。
+
+**JSON 结构定义：**
+{
+  "analysis": {
+    "bazi": ["${yearPillar}", "${monthPillar}", "${dayPillar}", "${hourPillar}"],
+    "summary": "总体运势简述 (100字左右，直击要害)",
+    "summaryScore": 85, // 0-100
+    "personality": "性格分析 (100字左右，盲派视角)",
+    "personalityScore": 80,
+    "appearance": "外貌特征分析 (50字以内)",
+    "appearanceScore": 75,
+    "industry": "适合的事业方向 (100字左右，具体行业)",
+    "industryScore": 80,
+    "fengShui": "发展风水建议 (50字以内)",
+    "fengShuiScore": 70,
+    "wealth": "财富等级分析 (100字左右，预估大运财运)",
+    "wealthScore": 85,
+    "marriage": "婚姻姻缘分析 (100字左右，配偶特征与婚姻质量)",
+    "marriageScore": 75,
+    "health": "身体健康分析 (100字左右，易患疾病与节点)",
+    "healthScore": 80,
+    "family": "六亲关系分析 (50字以内)",
+    "familyScore": 75,
+    "totalScore": 82 // 人生总评 0-100
+  },
+  "chartData": [
+    // 0岁到4岁的数组 (共5年)
+    {
+      "year": 1995,
+      "age": 0,
+      "ganZhi": "乙亥",
+      "open": 50,
+      "close": 55,
+      "high": 60,
+      "low": 45,
+      "summary": "出生之年",
+      "events": [{"title": "出生", "description": "降生"}]
+    }
+  ]
+}
+`;
+    } else if (generationType === 'batch') {
+      prompt = `
+基于之前的八字分析（${gender === 'male' ? '男' : '女'}，八字：${yearPillar} ${monthPillar} ${dayPillar} ${hourPillar}），
+请继续推演 ${currentAge}岁 到 ${endAge}岁 的运势数据。
+
+**任务要求：**
+1. **盲派流年推断**：结合大运和流年，运用盲派技巧推断每年的吉凶祸福。
+2. **具体事件**：指出具体的事件（如发财、升职、结婚、生子、生病、灾祸等），不要模棱两可。
+3. **诚实评价**：用语不用太温和，好就是好，坏就是坏。
+4. **输出格式**：只返回一个 JSON 数组，包含 ${currentAge}岁 到 ${endAge}岁 的 K线数据。不要包含任何 Markdown 标记。
+
+**JSON 数组结构示例：**
+[
+  {
+    "year": ${startYear}, // 对应 ${currentAge}岁
+    "age": ${currentAge},
+    "ganZhi": "...",
+    "open": 60,
+    "close": 65,
+    "high": 70,
+    "low": 55,
+    "summary": "...",
+    "events": []
+  }
+  // ... 直到 ${endAge}岁
+]
+`;
+    }
+
+    if (prompt) {
+      finalMessages = [
+        { role: 'system', content: 'You are a helpful assistant that outputs JSON only.' },
+        { role: 'user', content: prompt }
+      ];
+    }
+  }
+
   // Log usage
   await db.run(
     'INSERT INTO card_logs (card_code, ip, user_agent, device_info, input_data) VALUES (?, ?, ?, ?, ?)',
-    [card.code, ip, userAgent, userAgent, JSON.stringify(messages)]
+    [card.code, ip, userAgent, userAgent, JSON.stringify(finalMessages || messages)]
   );
 
   // Update card stats
@@ -324,7 +426,7 @@ app.post('/api/generate-report', verifyCard, async (req, res) => {
       `${config.DEEPSEEK_BASE_URL}/chat/completions`,
       {
         model: config.DEEPSEEK_MODEL || 'deepseek-chat',
-        messages,
+        messages: finalMessages || messages,
         temperature: 0.7
       },
       {

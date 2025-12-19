@@ -8,6 +8,7 @@ export const saveRecord = (
   result: FullAnalysisResult,
   lastAgeGenerated: number
 ) => {
+  console.log(`Saving history record: ${id}, age: ${lastAgeGenerated}`);
   const records = getRecords();
   const existingIndex = records.findIndex(r => r.id === id);
   
