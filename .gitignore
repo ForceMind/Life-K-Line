@@ -3,5 +3,6 @@ node_modules/
 dist/
 .env
 server/database.sqlite
+life-data.db
 *.log
 .DS_Store

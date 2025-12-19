@@ -5,9 +5,25 @@ set -e
 
 echo "🔄 Starting Update Process..."
 
+# 0. Backup configuration
+echo "💾 Backing up configuration..."
+if [ -f .env ]; then
+    cp .env .env.bak
+fi
+
 # 1. Pull latest code
 echo "📥 Pulling latest code from git..."
 git pull
+
+# 1.1 Restore configuration if it was overwritten
+if [ -f .env.bak ]; then
+    echo "♻️ Restoring configuration..."
+    # Restore only if .env is missing or we want to force keep old config
+    # Better strategy: If .env exists in repo, it might have overwritten ours.
+    # We copy back our backup.
+    cp .env.bak .env
+    rm .env.bak
+fi
 
 # 2. Install Dependencies (in case package.json changed)
 echo "📦 Updating dependencies..."
