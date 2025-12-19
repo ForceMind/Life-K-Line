@@ -24,7 +24,11 @@ const handleConfigUpdate = (config: AIConfig) => {
 };
 
 // Helper to generate signature for cache key
-const generateSignature = (bazi: BaziResult) => {
+const generateSignature = (bazi: BaziResult, userInput?: any) => {
+  // Use user input if available to distinguish between identical bazis (e.g. diff minute)
+  if (userInput) {
+    return `${bazi.gender}-${userInput.year}-${userInput.month}-${userInput.day}-${userInput.hour}-${userInput.minute}`;
+  }
   return `${bazi.gender}-${bazi.birthDate}-${bazi.yearPillar}-${bazi.monthPillar}-${bazi.dayPillar}-${bazi.hourPillar}`;
 };
 
@@ -41,12 +45,13 @@ const startBatchGeneration = async (
   // Ensure we have a valid result object to update
   if (!analysisResult.value) return;
 
-  const signature = generateSignature(bazi);
+  const signature = generateSignature(bazi, initialUserInput);
 
   while (currentAge < maxAge && isGenerating.value) {
     // Wait only if we are generating fresh data
     await new Promise(resolve => setTimeout(resolve, 10000));
     
+    // Check again after timeout
     if (!isGenerating.value) break;
 
     const endAge = Math.min(currentAge + batchSize - 1, maxAge);
@@ -63,7 +68,7 @@ const startBatchGeneration = async (
         saveRecord(
           signature,
           initialUserInput,
-          analysisResult.value,
+          JSON.parse(JSON.stringify(analysisResult.value)), // Deep copy to avoid ref issues
           endAge
         );
       }
@@ -97,7 +102,7 @@ const handleStart = async (userInput: any) => {
       userInput.gender
     );
     
-    const signature = generateSignature(bazi);
+    const signature = generateSignature(bazi, userInput);
 
     // 2. Check Local History Cache First
     const cachedRecord = getRecordById(signature);
@@ -105,7 +110,8 @@ const handleStart = async (userInput: any) => {
 
     if (cachedRecord) {
       console.log('Using cached record:', signature);
-      analysisResult.value = cachedRecord.result;
+      // Deep copy to prevent state pollution
+      analysisResult.value = JSON.parse(JSON.stringify(cachedRecord.result));
       currentStep.value = 'result';
       
       // If the cached record is incomplete (less than max age approx 80), resume generation
@@ -114,6 +120,8 @@ const handleStart = async (userInput: any) => {
       if (lastPoint && lastPoint.age < 79) {
         startAgeForBatch = lastPoint.age + 1;
         // Resume batch generation
+        // Must wait a tick or ensure component is mounted?
+        // Actually, startBatchGeneration is async so it's fine.
         startBatchGeneration(bazi, userInput.year, startAgeForBatch, userInput);
       } else {
         isGenerating.value = false;
@@ -127,7 +135,7 @@ const handleStart = async (userInput: any) => {
     currentStep.value = 'result';
 
     // Save initial state
-    saveRecord(signature, userInput, result, 4);
+    saveRecord(signature, userInput, JSON.parse(JSON.stringify(result)), 4);
 
     // 4. Start Background Batch Generation
     startBatchGeneration(bazi, userInput.year, 5, userInput);
@@ -141,7 +149,8 @@ const handleStart = async (userInput: any) => {
 };
 
 const handleLoadHistory = (record: HistoryRecord) => {
-  analysisResult.value = record.result;
+  // Deep copy to prevent state pollution from previous sessions
+  analysisResult.value = JSON.parse(JSON.stringify(record.result));
   currentStep.value = 'result';
   isGenerating.value = true; // Set true to allow resumption
 

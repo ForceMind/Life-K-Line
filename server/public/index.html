@@ -225,7 +225,7 @@
         createApp({
             setup() {
                 const loginForm = ref({ username: '', password: '' });
-                const token = ref(localStorage.getItem('admin_token') || '');
+                const token = ref(localStorage.getItem('life_kline_admin_token') || '');
                 const isLoggedIn = ref(false);
                 const cards = ref([]);
                 const generateCount = ref(1);
@@ -331,7 +331,7 @@
                         if (res.ok) {
                             const data = await res.json();
                             token.value = data.token;
-                            localStorage.setItem('admin_token', data.token);
+                            localStorage.setItem('life_kline_admin_token', data.token);
                             
                             // Force reactivity update
                             isLoggedIn.value = true;
@@ -348,7 +348,7 @@
                 };
 
                 const logout = () => {
-                    localStorage.removeItem('admin_token');
+                    localStorage.removeItem('life_kline_admin_token');
                     token.value = '';
                     isLoggedIn.value = false;
                     cards.value = [];
@@ -400,7 +400,7 @@
                             showSettings.value = false;
                             if (data.token) {
                                 token.value = data.token;
-                                localStorage.setItem('admin_token', data.token);
+                                localStorage.setItem('life_kline_admin_token', data.token);
                                 // Update login form if user changed
                                 if (body.ADMIN_USER) loginForm.value.username = body.ADMIN_USER;
                             }
