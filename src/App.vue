@@ -2,9 +2,10 @@
 import { ref, reactive } from 'vue';
 import InputForm from './components/InputForm.vue';
 import AnalysisReport from './components/AnalysisReport.vue';
-import { FullAnalysisResult, AIConfig, BaziResult } from './types';
+import { FullAnalysisResult, AIConfig, BaziResult, HistoryRecord } from './types';
 import { calculateBazi } from './utils/bazi';
 import { generateBaseReport, generateBatchData } from './services/ai';
+import { saveRecord, getRecordById } from './services/history';
 
 const currentStep = ref<'input' | 'loading' | 'result'>('input');
 const analysisResult = ref<FullAnalysisResult | null>(null);
@@ -22,13 +23,28 @@ const handleConfigUpdate = (config: AIConfig) => {
   Object.assign(apiConfig, config);
 };
 
-const startBatchGeneration = async (bazi: BaziResult, birthYear: number) => {
+// Helper to generate signature for cache key
+const generateSignature = (bazi: BaziResult) => {
+  return `${bazi.gender}-${bazi.birthDate}-${bazi.yearPillar}-${bazi.monthPillar}-${bazi.dayPillar}-${bazi.hourPillar}`;
+};
+
+const startBatchGeneration = async (
+  bazi: BaziResult, 
+  birthYear: number, 
+  startAgeFrom: number = 5,
+  initialUserInput: any
+) => {
   const batchSize = 5;
   const maxAge = 80;
-  let currentAge = 5; // 0-4岁已在基础报告中生成
+  let currentAge = startAgeFrom;
+
+  // Ensure we have a valid result object to update
+  if (!analysisResult.value) return;
+
+  const signature = generateSignature(bazi);
 
   while (currentAge < maxAge && isGenerating.value) {
-    // 等待10秒
+    // Wait only if we are generating fresh data
     await new Promise(resolve => setTimeout(resolve, 10000));
     
     if (!isGenerating.value) break;
@@ -40,8 +56,16 @@ const startBatchGeneration = async (bazi: BaziResult, birthYear: number) => {
       const newPoints = await generateBatchData(bazi, apiConfig, currentAge, endAge, startYear);
       
       if (analysisResult.value && newPoints.length > 0) {
-        // 追加数据，Vue 的响应式系统会自动更新图表
+        // Append new data
         analysisResult.value.chartData.push(...newPoints);
+        
+        // Save progress to history
+        saveRecord(
+          signature,
+          initialUserInput,
+          analysisResult.value,
+          endAge
+        );
       }
     } catch (e) {
       console.error(`Batch generation failed for age ${currentAge}-${endAge}`, e);
@@ -63,7 +87,7 @@ const handleStart = async (userInput: any) => {
   isGenerating.value = true;
 
   try {
-    // 1. 计算八字
+    // 1. Calculate Bazi
     const bazi: BaziResult = calculateBazi(
       userInput.year,
       userInput.month,
@@ -72,14 +96,41 @@ const handleStart = async (userInput: any) => {
       userInput.minute,
       userInput.gender
     );
+    
+    const signature = generateSignature(bazi);
 
-    // 2. 调用 AI 生成基础报告 (包含前5年数据)
+    // 2. Check Local History Cache First
+    const cachedRecord = getRecordById(signature);
+    let startAgeForBatch = 5;
+
+    if (cachedRecord) {
+      console.log('Using cached record:', signature);
+      analysisResult.value = cachedRecord.result;
+      currentStep.value = 'result';
+      
+      // If the cached record is incomplete (less than max age approx 80), resume generation
+      // The last point in chartData tells us where we left off
+      const lastPoint = cachedRecord.result.chartData[cachedRecord.result.chartData.length - 1];
+      if (lastPoint && lastPoint.age < 79) {
+        startAgeForBatch = lastPoint.age + 1;
+        // Resume batch generation
+        startBatchGeneration(bazi, userInput.year, startAgeForBatch, userInput);
+      } else {
+        isGenerating.value = false;
+      }
+      return; // Skip API call
+    }
+
+    // 3. Call AI for Base Report (0-4 years) if no cache
     const result = await generateBaseReport(bazi, apiConfig);
     analysisResult.value = result;
     currentStep.value = 'result';
 
-    // 3. 开始后台分批生成剩余数据
-    startBatchGeneration(bazi, userInput.year);
+    // Save initial state
+    saveRecord(signature, userInput, result, 4);
+
+    // 4. Start Background Batch Generation
+    startBatchGeneration(bazi, userInput.year, 5, userInput);
 
   } catch (err: any) {
     errorMsg.value = err.message || '发生未知错误';
@@ -89,8 +140,33 @@ const handleStart = async (userInput: any) => {
   }
 };
 
+const handleLoadHistory = (record: HistoryRecord) => {
+  analysisResult.value = record.result;
+  currentStep.value = 'result';
+  isGenerating.value = true; // Set true to allow resumption
+
+  // Check if we need to resume generation
+  const lastPoint = record.result.chartData[record.result.chartData.length - 1];
+  
+  // Re-calculate bazi for the generator
+  const bazi = calculateBazi(
+    record.userInput.year,
+    record.userInput.month,
+    record.userInput.day,
+    record.userInput.hour,
+    record.userInput.minute,
+    record.userInput.gender
+  );
+
+  if (lastPoint && lastPoint.age < 79) {
+    startBatchGeneration(bazi, record.userInput.year, lastPoint.age + 1, record.userInput);
+  } else {
+    isGenerating.value = false;
+  }
+};
+
 const handleBack = () => {
-  isGenerating.value = false; // 停止生成循环
+  isGenerating.value = false; // Stop generation loop
   currentStep.value = 'input';
   analysisResult.value = null;
 };
@@ -114,6 +190,7 @@ const handleBack = () => {
       v-if="currentStep === 'input'" 
       @start="handleStart" 
       @update-config="handleConfigUpdate"
+      @load-history="handleLoadHistory"
     />
 
     <!-- Analysis Report -->

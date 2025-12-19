@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, watch } from 'vue';
-import { AIConfig, BaziResult } from '../types';
+import { AIConfig, BaziResult, HistoryRecord } from '../types';
 import { calculateBazi } from '../utils/bazi';
+import HistoryList from './HistoryList.vue';
 
-const emit = defineEmits(['start', 'update-config']);
+const emit = defineEmits(['start', 'update-config', 'load-history']);
 
 const userInput = reactive({
   year: 2003,
@@ -21,6 +22,7 @@ const apiConfig = reactive<AIConfig>({
 });
 
 const showSettings = ref(false);
+const showHistory = ref(false);
 const previewBazi = ref<BaziResult | null>(null);
 
 // 实时计算八字
@@ -61,6 +63,11 @@ const saveConfig = () => {
 
 const handleStart = () => {
   emit('start', userInput);
+};
+
+const handleHistorySelect = (record: HistoryRecord) => {
+  showHistory.value = false;
+  emit('load-history', record);
 };
 </script>
 
@@ -178,14 +185,24 @@ const handleStart = () => {
         </div>
 
         <!-- Settings Trigger -->
-        <div class="mt-6 text-center">
-          <button @click="showSettings = true" class="text-xs text-gray-400 hover:text-gray-600 flex items-center justify-center gap-1 mx-auto transition-colors">
+        <div class="mt-6 text-center flex justify-center gap-4">
+          <button @click="showSettings = true" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
             输入卡密
+          </button>
+          
+          <span class="text-gray-300">|</span>
+
+          <button @click="showHistory = true" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+            查询记录
           </button>
         </div>
       </div>
     </div>
+
+    <!-- History Modal -->
+    <HistoryList v-if="showHistory" @close="showHistory = false" @select="handleHistorySelect" />
 
     <!-- Settings Modal -->
     <div v-if="showSettings" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -194,7 +211,7 @@ const handleStart = () => {
         <div class="space-y-4">
           <div>
             <label class="block text-xs text-gray-500 mb-1">请输入您的卡密 (Card Key)</label>
-            <input v-model="apiConfig.cardKey" type="text" class="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none font-mono" placeholder="LK-XXXX-XXXX">
+            <input v-model="apiConfig.cardKey" type="text" class="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none font-mono" placeholder="LK-XXXXXXXX">
           </div>
           
           <div class="bg-blue-50 p-3 rounded border border-blue-100">

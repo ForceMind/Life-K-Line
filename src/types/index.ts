@@ -60,3 +60,11 @@ export interface AIConfig {
   baseUrl: string; // Now points to local server usually
   model: string;
 }
+
+export interface HistoryRecord {
+  id: string; // Unique ID (baziSignature)
+  timestamp: number;
+  userInput: any;
+  result: FullAnalysisResult;
+  lastAgeGenerated: number; // To track progress for resuming
+}
