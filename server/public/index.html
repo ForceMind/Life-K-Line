@@ -332,9 +332,13 @@
                             const data = await res.json();
                             token.value = data.token;
                             localStorage.setItem('admin_token', data.token);
+                            
+                            // Force reactivity update
                             isLoggedIn.value = true;
-                            fetchCards();
-                            fetchConfig();
+                            
+                            // Immediately fetch data to populate dashboard
+                            await fetchCards();
+                            await fetchConfig();
                         } else {
                             alert('登录失败');
                         }
@@ -413,15 +417,22 @@
                     try {
                         const res = await fetch('/api/admin/cards', { headers: getHeaders() });
                         if (res.status === 401) {
-                            logout();
+                            console.error('Fetch cards 401 Unauthorized');
+                            // Only logout if we are sure it's a token issue, but for now let's just alert
+                            // logout(); 
+                            // return;
+                            if (isLoggedIn.value) {
+                                alert('会话已过期，请重新登录');
+                                logout();
+                            }
                             return;
                         }
                         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                         const data = await res.json();
                         cards.value = data.cards;
-                        isLoggedIn.value = true;
+                        // isLoggedIn.value = true; // No need to set here
                     } catch (e) {
-                        console.error(e);
+                        console.error('Fetch cards error:', e);
                     }
                 };
 
